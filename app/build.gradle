@@ -1,0 +1,57 @@
+plugins {
+    id 'java'
+    id 'com.gradleup.shadow' version '8.3.6'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Burp Suite Montoya API (Provided by Burp at runtime)
+    compileOnly 'net.portswigger.burp.extensions:montoya-api:2024.12'
+    testImplementation 'net.portswigger.burp.extensions:montoya-api:2024.12'
+
+    // JSON serialization / deserialization (bundled in Fat JAR)
+    implementation 'com.google.code.gson:gson:2.11.0'
+
+    // Interactive Pie Charts and Statistics (bundled in Fat JAR)
+    implementation 'org.jfree:jfreechart:1.5.4'
+
+    // Guava utilities (bundled in Fat JAR)
+    implementation 'com.google.guava:guava:33.4.0-jre'
+
+    // Testing
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.12.1'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// Disable thin JAR to avoid confusion
+jar {
+    enabled = false
+}
+
+// Produce a single all-in-one Fat JAR for Burp Suite
+shadowJar {
+    archiveFileName.set('Thorization.jar')
+    mergeServiceFiles()
+    manifest {
+        attributes(
+            'Implementation-Title': 'Thorization',
+            'Implementation-Version': '1.0.0'
+        )
+    }
+}
+
+tasks.assemble.dependsOn tasks.shadowJar
+tasks.build.dependsOn tasks.shadowJar
