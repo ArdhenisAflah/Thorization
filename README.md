@@ -14,7 +14,7 @@
 
 ## 🚀 Key Features & Unique Selling Points (USPs)
 
-### 1. 🛡️ Safe Request Interception & Drop Control (USP 1)
+### 1. 🛡️ Safe Request Interception & Drop Control
 * **Destructive Action Prevention**: Automatically drop or pause state-changing client requests (`POST`, `PUT`, `DELETE`, `PATCH`) in Burp Proxy before they reach the server, while safely replaying authorization checks for configured attacker roles.
 * **Flexible Interception Modes**:
   * `Drop Original & Replay (Safe Mode)`: Drops the victim socket request in Proxy and tests attacker roles in the background without modifying production/client state.

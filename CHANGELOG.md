@@ -4,7 +4,73 @@ All notable changes, patches, UI improvements, and bug fixes for the **Thorizati
 
 ---
 
-## [v1.2.0] - 2026-09-01 (Current)
+## [v1.3.1] - 2026-10-13 (Current)
+### 🔄 Refactored & Paused (Pipeline Studio Architectural Pivot & UI Streamlining)
+- **Pipeline Studio Paused for Future Development**:
+  - Re-designated Tab 3 as **"Pipeline Studio (WIP)"** to pivot project focus towards high-efficiency core features (Safe Drop interception, multi-role replay) and AI LLM (MCP) integration.
+  - Added a prominent styled notification banner (`[WIP / Future Development]`) at the top of Tab 3 using clean plain text (eliminating unrendered Swing HTML tags in Burp Suite) within an amber theme-aware card.
+  - Disabled live execution button (`▶ Run (Paused - WIP)`) with neutral disabled styling to prevent accidental trigger of complex state machine executions.
+  - Updated `PipelineConsolePanel` with informative paused notice and `VERDICT: N/A` state.
+- **Removed Unprofessional "(USP 1)" Labels**:
+  - Cleaned up titled border in `RolesPanel` (`"Safe Request Interception & Drop Control"`), tooltips in `TablePanel`, javadocs, and comments across all core classes.
+- **Enhanced URL Regex Filtering**:
+  - Upgraded `FilterConfig.matchesUrl` to use case-insensitive `Pattern.compile(...).matcher(...).find()`, supporting flexible substring patterns, anchored patterns, and resilient error recovery.
+- **Dedicated Request & Drop Control Unit Test Suite (`RequestDropControlManagerTest.java`)**:
+  - Added 11 comprehensive unit tests with realistic dummy traffic data covering URL include/exclude regexes, static file filtering, state-changing drop target logic (POST/PUT/DELETE/PATCH vs Drop ALL), native Proxy drop actions (`DROP_ORIGINAL_AND_REPLAY`, `REPLAY_FIRST_THEN_ALLOW`, `PASS_THROUGH_AND_REPLAY`), Repeater pass-through, proxy message deduplication, and `RolesPanel` UI synchronization.
+- **Preserved Core Models & State Persistence**:
+  - Maintained full backwards compatibility and serialization support for `Pipeline`, `RequestStep`, `ConditionBranch`, `ExtractionRule`, and session JSON import/export schemas.
+
+---
+
+## [v1.3.0] - 2026-10-01
+### 🚀 Added (AI Agent Bridge — REST API for Autonomous LLM Integration)
+- **Dedicated Bridge Package (`thorization.bridge`)**:
+  - Implemented embedded, zero-external-dependency HTTP REST API server using JDK standard `com.sun.net.httpserver.HttpServer`.
+  - Bound strictly to localhost (`127.0.0.1:1337/api/`) to guarantee complete local isolation with zero network exposure.
+  - Full CORS headers support (`OPTIONS`, `Access-Control-Allow-Origin: *`, `GET`, `POST`, `PUT`, `DELETE`).
+- **REST Endpoints for AI Agents (Antigravity, Claude, Custom Automation)**:
+  - **`GET /api/status`**: Reports extension state, version (`v1.3.0`), active rules, scope filters, target methods, regex filters, and role counts.
+  - **`GET /api/roles`**: Returns all configured user roles with tokens, headers, cookies, and enabled states.
+  - **`POST /api/roles`**: Allows AI agents to dynamically register new user roles with custom authentication headers and cookies.
+  - **`PUT /api/roles/{id}`**: Modifies existing role credentials, names, headers, cookies, or activation status.
+  - **`DELETE /api/roles/{id}`**: Deletes configured roles by ID.
+  - **`POST /api/analyze`**: Submits HTTP requests (supports both structured JSON and raw HTTP text formats) for multi-role authorization audit:
+    - Automatically verifies requests against active extension filter rules (scope, method filters, static file ignoring, regex).
+    - Returns `filteredOut: true` with explanatory reason if rules drop the request, or supports explicit override via `bypassFilter: true`.
+    - Dispatches base request, replays across all active configured roles and unauthenticated state, and returns comprehensive authorization verdicts (`BYPASS`, `ENFORCED`, `SIMILAR_ANOMALOUS`).
+    - Supports both synchronous and asynchronous execution modes (`sync: true/false`).
+  - **`GET /api/records`**: Queries transaction audit history, verdicts, status codes, and response lengths.
+  - **`GET /api/records/{id}`**: Retrieves granular per-role verdict breakdowns, execution times, and similarity scores.
+- **Burp Extension Lifecycle Integration**:
+  - Automatically starts `AiBridgeServer` on `ThorizationExtension.initialize()` and gracefully tears down server/executors on extension unload.
+  - Added startup logging banner displaying API bridge connection URL.
+- **Automated Test Coverage**:
+  - Added comprehensive unit and integration test suite `AiBridgeTest.java` verifying status, role CRUD, rule validations, raw HTTP request parsing, and end-to-end HTTP client interactions.
+
+---
+
+## [v1.2.1] - 2026-10-01
+### 🐛 Fixed & 💅 Polished (HiDPI & Responsive Layout Enhancements)
+- **Resolved TitledBorder Text Collision**:
+  - Replaced raw `BorderFactory.createTitledBorder(...)` on `RolesPanel`, `PipelineStudioPanel`, and `StatisticsPanel` with `BorderFactory.createCompoundBorder(..., createEmptyBorder(...))` to eliminate text overlapping with the first row of input components across HiDPI and Linux font renderers.
+- **Scrollable & Responsive Configuration Layout (Roles Manager)**:
+  - Encapsulated the role editor and drop/filter controls (`createConfigPanel()`) in a smooth `JScrollPane` (`UNIT_INCREMENT = 16`).
+  - Added explicit preferred heights (`28px`) for input text fields to prevent vertical collapsing/crushing on compact or tiled window sizes (e.g. Hyprland tiling).
+  - Shortened left panel title to `Configured Roles` and optimized divider location to prevent title truncation.
+- **Analysis Table Toolbar & Responsive Layout**:
+  - Replaced `BorderLayout` in `TablePanel` toolbar with `GridBagLayout` (left-anchored engine controls and right-anchored filter/export controls) to eliminate component overlapping when window is tiled or running at 2x DPI scale.
+  - Shortened toolbar text while preserving full context: `"Engine: OFF/ON"`, `"● Idle/Active"`, `"Drop Original (Safe)"`, `"Replay First, Then Allow"`, `"Pass Through (Standard)"`, `"Drop All"`, `"Clear"`, `"Search:"`, `"Export"`, and `"Import"`.
+  - Added explicit minimum/preferred sizing on `searchFilterField` (`120x26`) and informative tooltips across all controls.
+- **Pipeline Studio Overhaul (Dark Theme & Responsive UI)**:
+  - Eliminated hardcoded white and light gray backgrounds (`Color.WHITE`, `Color(245, 247, 250)`, `Color(240, 243, 246)`) in `PipelineStudioPanel`, `cardsContainer`, `RequestBlockCard`, `BranchBlockCard`, and `PipelineConsolePanel`.
+  - Added `UiUtils.getCardBackground()` providing dynamic, theme-aware elevated surface colors (`#222831` for HTTP requests, `#2a261e` for condition branches in Dark Mode).
+  - Streamlined `RequestBlockCard`: Consolidated Headers, Body Template, and Variable Extractions into a 3-tab sub-panel (`payloadTabs`), reducing card height by ~60% and preventing UI cut-offs.
+  - Streamlined `BranchBlockCard`: Structured IF conditions, side-by-side THEN/ELSE actions, and failure notes cleanly without overlapping.
+  - Reorganized Top Toolbar: Created clean Scenario management on the left (`Scenario:`, `+ New`, `Save`, `Delete`, `▶ Run`) and action buttons on the right (`+ HTTP Step`, `+ Condition`), preventing button truncation.
+
+---
+
+## [v1.2.0] - 2026-09-01
 ### 🚀 Added (Batch 3 — USP 2 & 3: Pipeline Studio & Block-Based State Chains)
 - **Pipeline Studio (Tab 3)**:
   - Visual Scratch-style block builder for designing stateful multi-step authorization tests.
@@ -67,7 +133,7 @@ All notable changes, patches, UI improvements, and bug fixes for the **Thorizati
 ---
 
 ## [v1.1.0] - 2026-09-01 (Batch 2 Milestone)
-### 🚀 Added (USP 1: Safe Request Interception & Drop Control)
+### 🚀 Added (Safe Request Interception & Drop Control)
 - **Native Proxy Drop & Interception Modes**:
   - Implemented `InterceptionMode` enum:
     - `DROP_ORIGINAL_AND_REPLAY`: Automatically drops state-changing requests (`POST`, `PUT`, `DELETE`, `PATCH`) in Burp Proxy via `ProxyRequestReceivedAction.drop()` so victim data is never destroyed, while testing attacker roles safely.

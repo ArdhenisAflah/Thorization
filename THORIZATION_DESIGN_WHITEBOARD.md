@@ -6,10 +6,18 @@
 ### Unique Selling Points (Roadmap)
 - **Batch 1 (Foundation & Multi-Role MVP) [COMPLETED]**:
   - Core Montoya integration, SOLID layout, dynamic role tabs, export/import, JFreeChart dashboard.
-- **Batch 2 (USP 1 - Safe Request Interception & Drop Control + Role Sequencing) [COMPLETED]**:
+- **Batch 2 (Safe Request Interception & Drop Control + Role Sequencing) [COMPLETED]**:
   - Native Proxy request dropping (`ProxyRequestHandler.drop()`), Repeater pass-through, configurable state-changing method filters, traffic source tool tracking (`Proxy` vs `Repeater`), role priority execution ordering, and table Action/Source badges.
-- **Batch 3 (USP 2 & 3 - Pipeline Studio, Variable Chaining & Auto Instance Lifecycle) [COMPLETED]**:
+- **Batch 3 (USP 2 & 3 - Pipeline Studio, Variable Chaining & Auto Instance Lifecycle) [PAUSED / WIP]**:
   - Visual Scratch-style block builder (Tab 3), `RequestBlockCard` with `{{VAR}}` placeholder substitution, `BranchBlockCard` with `IF/ELSE` condition trees, `JsonPathExtractor` + `VariableResolver`, dynamic table badging (`[⚡ Pipeline]`), and full JSON import/export session compatibility.
+  - *Pivot update (v1.3.1)*: Automated execution paused (`[WIP / Future Development]`). Visual scenario design cards retained for reference. Right-click pipeline send action removed from Analysis Table to focus project resources on high-speed core interception and AI MCP integration.
+- **Maintenance / v1.2.1 (HiDPI & Responsive Layout Hardening) [COMPLETED]**:
+  - Compound borders (`BorderFactory.createCompoundBorder`) across all titled panels to eliminate title/first-row text collision under HiDPI / Linux font renderers.
+  - Scrollable `createConfigPanel` via `JScrollPane` and standardized minimum/preferred field heights (`28px`) to ensure zero component squishing across compact or tiled window viewports.
+- **Batch 4 / v1.3.0 (AI Agent Bridge — REST API for LLMs & Autonomous Agents) [COMPLETED]**:
+  - Dedicated bridge package (`thorization.bridge`) providing an embedded lightweight HTTP REST server (`com.sun.net.httpserver.HttpServer`) strictly bound to `127.0.0.1:1337/api/`.
+  - Zero external HTTP dependencies to eliminate Burp Suite classloader conflicts.
+  - AI endpoints for state check (`GET /api/status`), role management (`GET, POST, PUT, DELETE /api/roles`), automated request analysis under active rules (`POST /api/analyze`), and audit query (`GET /api/records`).
 
 ---
 
@@ -19,6 +27,21 @@
 thorization/
 ├── ThorizationExtension.java         # BurpExtension entry point (Montoya API registration)
 ├── App.java                          # Standalone GUI preview launcher
+├── bridge/                           # Batch 4: AI Agent Bridge (REST API)
+│   ├── AiBridgeServer.java           # Embedded HTTP server bound to 127.0.0.1:1337
+│   ├── AiBridgeController.java       # Coordinates rules, replay, roles & record conversion
+│   ├── dto/                          # Bridge Data Transfer Objects
+│   │   ├── StatusResponseDto.java    # Extension state & active filter rules
+│   │   ├── RoleDto.java              # Role definition (name, headers, cookies, enabled)
+│   │   ├── AnalyzeRequestDto.java    # HTTP request analysis payload (structured or raw)
+│   │   ├── AnalyzeResponseDto.java   # Audit outcome, verdicts & similarity per role
+│   │   └── AuditRecordSummaryDto.java# Audit table transaction summary
+│   └── handlers/                     # Sun JDK HttpServer Endpoints
+│       ├── BaseHttpHandler.java      # CORS, JSON serialization & error responses
+│       ├── StatusHandler.java        # GET /api/status
+│       ├── RoleHandler.java          # GET, POST /api/roles and PUT, DELETE /api/roles/{id}
+│       ├── AnalyzeHandler.java       # POST /api/analyze (rule checks & multi-role replay)
+│       └── RecordsHandler.java       # GET /api/records and GET /api/records/{id}
 ├── model/                            # Data Models & Entities
 │   ├── UserRole.java                 # Role entity (name, enabled, header map, cookie string)
 │   ├── AuthorizationCheckResult.java # Scan result entity per role (verdict, status, length, similarity)
@@ -41,7 +64,7 @@ thorization/
 ├── core/                             # Business Logic & Replay Engine
 │   ├── EngineController.java         # Master coordinator (toggle, thread pool, sequencing, pipelines)
 │   ├── EngineListener.java           # Observer interface for UI reactivity
-│   ├── HttpTrafficHandler.java       # Montoya HttpHandler & ProxyRequestHandler (USP 1 safe drop & pass-through)
+│   ├── HttpTrafficHandler.java       # Montoya HttpHandler & ProxyRequestHandler (safe drop & pass-through)
 │   ├── ReplayEngine.java             # Executes replayed requests for each role & unauth in sequential order
 │   ├── DetectionEngine.java          # Hybrid classification logic (Status, Length diff %, Regex matchers)
 │   └── pipeline/                     # Batch 3: Pipeline Execution Engines
