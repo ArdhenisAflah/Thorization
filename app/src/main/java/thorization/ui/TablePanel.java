@@ -31,6 +31,7 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
 import javax.swing.RowFilter;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -461,13 +462,18 @@ public class TablePanel extends JPanel implements EngineListener {
 
                 controller.importRecords(result.getRecords(), result.getRoles(), result.getPipelines(), replace);
 
-                if (!result.getRecords().isEmpty()) {
-                    auditTable.setRowSelectionInterval(0, 0);
-                    AuditRecord firstRecord = tableModel.getRecordAt(0);
-                    if (firstRecord != null) {
-                        viewerPanel.displayRecord(firstRecord, controller.getRoles());
-                    }
-                }
+                SwingUtilities.invokeLater(() -> {
+                    try {
+                        if (auditTable.getRowCount() > 0) {
+                            auditTable.setRowSelectionInterval(0, 0);
+                            int modelRow = auditTable.convertRowIndexToModel(0);
+                            AuditRecord firstRecord = tableModel.getRecordAt(modelRow);
+                            if (firstRecord != null) {
+                                viewerPanel.displayRecord(firstRecord, controller.getRoles());
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                });
 
                 JOptionPane.showMessageDialog(this, "Imported " + result.getRecords().size() + " records, "
                                 + result.getRoles().size() + " roles, and "
