@@ -15,6 +15,7 @@ public class StepExecutionRecord {
     private String stepName;
     private StepType stepType;
     private String roleName;
+    private String roleId;
     private int statusCode;
     private int responseLength;
     private long executionTimeMs;
@@ -53,6 +54,14 @@ public class StepExecutionRecord {
 
     public void setRoleName(String roleName) {
         this.roleName = roleName;
+    }
+
+    public String getRoleId() {
+        return roleId;
+    }
+
+    public void setRoleId(String roleId) {
+        this.roleId = roleId;
     }
 
     public int getStatusCode() {

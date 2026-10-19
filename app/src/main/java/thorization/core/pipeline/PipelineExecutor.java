@@ -130,6 +130,7 @@ public class PipelineExecutor {
     private StepExecutionRecord executeRequestStep(int stepNum, RequestStep reqStep, Map<String, String> variables,
                                                    List<UserRole> availableRoles, StringBuilder trace) {
         StepExecutionRecord record = new StepExecutionRecord(reqStep.getId(), reqStep.getName(), StepType.REQUEST);
+        record.setRoleId(reqStep.getTargetRoleId());
         long start = System.currentTimeMillis();
 
         String resolvedUrl = VariableResolver.resolve(reqStep.getUrlTemplate(), variables);
@@ -187,7 +188,8 @@ public class PipelineExecutor {
             // Perform Extractions
             if (reqStep.getExtractions() != null) {
                 for (ExtractionRule rule : reqStep.getExtractions()) {
-                    String extractedVal = performExtraction(rule, httpRequest, response != null ? response.response() : null, resolvedBody, variables);
+                    String extractedVal = performExtraction(rule, httpRequest, response != null ? response.response() : null,
+                            resolvedBody, resolvedUrl, resolvedHeaders, variables);
                     if (extractedVal != null && !extractedVal.isEmpty()) {
                         variables.put(rule.getVariableName(), extractedVal);
                         record.addExtractedVar(rule.getVariableName(), extractedVal);
@@ -212,31 +214,42 @@ public class PipelineExecutor {
     }
 
     private String performExtraction(ExtractionRule rule, HttpRequest request, HttpResponse response,
-                                     String requestBody, Map<String, String> currentVars) {
+                                     String requestBody, String resolvedUrl, String resolvedHeaders,
+                                     Map<String, String> currentVars) {
         if (rule == null) return null;
 
         ExtractionSource source = rule.getSource();
         ExtractionType type = rule.getType();
-        String expr = rule.getExpression();
+        String expr = rule.getExpression() != null ? rule.getExpression().trim() : "";
 
+        // 1. URL Query Parameter extraction
+        if (source == ExtractionSource.URL_QUERY_PARAM) {
+            String url = (request != null && request.url() != null && !request.url().isEmpty())
+                    ? request.url()
+                    : (resolvedUrl != null ? resolvedUrl : "");
+            return JsonPathExtractor.extractRegex(url, "[?&]" + PatternQuote(expr) + "=([^&#]+)");
+        }
+
+        // 2. Request Header extraction
+        if (source == ExtractionSource.REQUEST_HEADER) {
+            return extractHeaderValue(request, resolvedHeaders, expr, type);
+        }
+
+        // 3. Response Header extraction
+        if (source == ExtractionSource.RESPONSE_HEADER) {
+            return extractResponseHeaderValue(response, expr, type);
+        }
+
+        // 4. Request Body or Response Body extraction
         String rawContent = "";
         if (source == ExtractionSource.REQUEST_BODY) {
-            rawContent = request != null && request.body() != null ? request.bodyToString() : requestBody;
+            rawContent = (request != null && request.bodyToString() != null && !request.bodyToString().isEmpty())
+                    ? request.bodyToString()
+                    : (requestBody != null ? requestBody : "");
         } else if (source == ExtractionSource.RESPONSE_BODY) {
-            rawContent = response != null && response.body() != null ? response.bodyToString() : "";
-        } else if (source == ExtractionSource.REQUEST_HEADER) {
-            if (request != null && expr != null) {
-                HttpHeader h = request.header(expr);
-                return h != null ? h.value() : null;
-            }
-        } else if (source == ExtractionSource.RESPONSE_HEADER) {
-            if (response != null && expr != null) {
-                HttpHeader h = response.header(expr);
-                return h != null ? h.value() : null;
-            }
-        } else if (source == ExtractionSource.URL_QUERY_PARAM) {
-            String url = request != null ? request.url() : "";
-            return JsonPathExtractor.extractRegex(url, "[?&]" + PatternQuote(expr) + "=([^&#]+)");
+            rawContent = (response != null && response.bodyToString() != null)
+                    ? response.bodyToString()
+                    : "";
         }
 
         if (rawContent == null || rawContent.isEmpty()) {
@@ -247,6 +260,98 @@ public class PipelineExecutor {
             return JsonPathExtractor.extractJsonPath(rawContent, expr);
         } else if (type == ExtractionType.REGEX) {
             return JsonPathExtractor.extractRegex(rawContent, expr);
+        }
+
+        return null;
+    }
+
+    private String extractResponseHeaderValue(HttpResponse response, String expr, ExtractionType type) {
+        if (response == null || expr == null || expr.isEmpty()) return null;
+
+        // Syntax A: Header-Name: regex_pattern (e.g. "Set-Cookie: session=([a-zA-Z0-9]+)")
+        if (expr.contains(":")) {
+            String[] parts = expr.split(":", 2);
+            String headerName = parts[0].trim();
+            String pattern = parts[1].trim();
+            HttpHeader h = response.header(headerName);
+            if (h != null && h.value() != null) {
+                return JsonPathExtractor.extractRegex(h.value(), pattern);
+            }
+            return null;
+        }
+
+        // Syntax B: Direct Header Name lookup (e.g. expr = "Set-Cookie" or "Location")
+        HttpHeader h = response.header(expr);
+        if (h != null && h.value() != null) {
+            if (type == ExtractionType.REGEX) {
+                String extracted = JsonPathExtractor.extractRegex(h.value(), expr);
+                return extracted != null ? extracted : h.value();
+            }
+            return h.value();
+        }
+
+        // Syntax C: Expr is a Regex pattern to match across any header line (e.g. "session_id=([a-zA-Z0-9]+)")
+        if (type == ExtractionType.REGEX && response.headers() != null) {
+            for (HttpHeader hdr : response.headers()) {
+                String line = hdr.name() + ": " + hdr.value();
+                String extracted = JsonPathExtractor.extractRegex(line, expr);
+                if (extracted != null) {
+                    return extracted;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private String extractHeaderValue(HttpRequest request, String resolvedHeaders, String expr, ExtractionType type) {
+        if (expr == null || expr.isEmpty()) return null;
+
+        if (request != null) {
+            if (expr.contains(":")) {
+                String[] parts = expr.split(":", 2);
+                String headerName = parts[0].trim();
+                String pattern = parts[1].trim();
+                HttpHeader h = request.header(headerName);
+                if (h != null && h.value() != null) {
+                    return JsonPathExtractor.extractRegex(h.value(), pattern);
+                }
+                return null;
+            }
+
+            HttpHeader h = request.header(expr);
+            if (h != null && h.value() != null) {
+                if (type == ExtractionType.REGEX) {
+                    String extracted = JsonPathExtractor.extractRegex(h.value(), expr);
+                    return extracted != null ? extracted : h.value();
+                }
+                return h.value();
+            }
+
+            if (type == ExtractionType.REGEX && request.headers() != null) {
+                for (HttpHeader hdr : request.headers()) {
+                    String line = hdr.name() + ": " + hdr.value();
+                    String extracted = JsonPathExtractor.extractRegex(line, expr);
+                    if (extracted != null) return extracted;
+                }
+            }
+        } else if (resolvedHeaders != null && !resolvedHeaders.trim().isEmpty()) {
+            for (String line : resolvedHeaders.split("\\r?\\n")) {
+                String trimmed = line.trim();
+                if (trimmed.contains(":")) {
+                    String[] parts = trimmed.split(":", 2);
+                    String hName = parts[0].trim();
+                    String hVal = parts[1].trim();
+                    if (expr.contains(":")) {
+                        String[] exprParts = expr.split(":", 2);
+                        if (hName.equalsIgnoreCase(exprParts[0].trim())) {
+                            return JsonPathExtractor.extractRegex(hVal, exprParts[1].trim());
+                        }
+                    } else if (hName.equalsIgnoreCase(expr)) {
+                        return hVal;
+                    }
+                }
+            }
         }
 
         return null;
@@ -274,7 +379,25 @@ public class PipelineExecutor {
             if (response == null || response.body() == null) return false;
             return response.bodyToString().matches("(?s).*" + expected + ".*");
         } else if (type == ConditionBranch.ConditionType.VARIABLE_NOT_EMPTY) {
-            String val = variables.get(expected);
+            String rawKey = branch.getExpectedValue() != null ? branch.getExpectedValue().trim() : "";
+            if (rawKey.startsWith("{{") && rawKey.endsWith("}}") && rawKey.length() > 4) {
+                rawKey = rawKey.substring(2, rawKey.length() - 2).trim();
+            }
+
+            String val = variables.get(rawKey);
+            if (val == null) {
+                for (Map.Entry<String, String> entry : variables.entrySet()) {
+                    if (entry.getKey().equalsIgnoreCase(rawKey)) {
+                        val = entry.getValue();
+                        break;
+                    }
+                }
+            }
+
+            if (val == null && !expected.isEmpty() && !expected.startsWith("{{") && !expected.equals(branch.getExpectedValue())) {
+                val = expected;
+            }
+
             return val != null && !val.trim().isEmpty();
         }
 

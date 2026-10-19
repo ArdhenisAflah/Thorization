@@ -2,6 +2,8 @@ package thorization.core;
 
 import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.http.message.HttpRequestResponse;
+import burp.api.montoya.http.message.requests.HttpRequest;
+import burp.api.montoya.http.message.responses.HttpResponse;
 import thorization.core.pipeline.PipelineExecutor;
 import thorization.model.AuditRecord;
 import thorization.model.AuthorizationCheckResult;
@@ -26,7 +28,7 @@ import java.util.function.Consumer;
 
 /**
  * Master controller coordinating interception, background worker threads,
- * safe drop actions (USP 1), role execution ordering, Pipeline Studio workflows (Batch 3), and UI observers.
+ * safe drop actions, role execution ordering, Pipeline Studio workflows (Batch 3), and UI observers.
  */
 public class EngineController {
 
@@ -56,6 +58,31 @@ public class EngineController {
 
     public MontoyaApi getApi() {
         return api;
+    }
+
+    public DetectionEngine getDetectionEngine() {
+        return detectionEngine;
+    }
+
+    public ReplayEngine getReplayEngine() {
+        return replayEngine;
+    }
+
+    public long nextRecordId() {
+        return recordIdCounter.getAndIncrement();
+    }
+
+    public void addRecord(AuditRecord record) {
+        if (record != null) {
+            records.add(record);
+            notifyRecordAdded(record);
+        }
+    }
+
+    public void notifyRecordChange(AuditRecord record) {
+        if (record != null) {
+            notifyRecordUpdated(record);
+        }
     }
 
     public PipelineExecutor getPipelineExecutor() {
@@ -106,8 +133,8 @@ public class EngineController {
 
     // --- Role Management ---
 
-    public List<UserRole> getRoles() {
-        return Collections.unmodifiableList(roles);
+    public synchronized List<UserRole> getRoles() {
+        return Collections.unmodifiableList(new ArrayList<>(roles));
     }
 
     public synchronized void addRole(UserRole role) {
@@ -166,8 +193,8 @@ public class EngineController {
 
     // --- Pipeline Management (Batch 3) ---
 
-    public List<Pipeline> getPipelines() {
-        return Collections.unmodifiableList(pipelines);
+    public synchronized List<Pipeline> getPipelines() {
+        return Collections.unmodifiableList(new ArrayList<>(pipelines));
     }
 
     public synchronized void addPipeline(Pipeline pipeline) {
@@ -217,6 +244,7 @@ public class EngineController {
                 for (StepExecutionRecord stepRec : result.getStepRecords()) {
                     if (stepRec.getHttpRequestResponse() != null) {
                         sampleTx = stepRec.getHttpRequestResponse();
+                        break;
                     }
                 }
 
@@ -227,22 +255,68 @@ public class EngineController {
                 pipelineRecord.setPipelineTrace(result.getExecutionTrace());
                 pipelineRecord.setPipelineStepRecords(result.getStepRecords());
 
-                // Set verdict across roles or generic verdict
+                // Set verdict and map specific step traffic per role
                 Verdict verdict = result.getFinalVerdict();
                 for (UserRole r : roles) {
+                    StepExecutionRecord matchingStep = null;
+                    for (StepExecutionRecord stepRec : result.getStepRecords()) {
+                        if (r.getId().equals(stepRec.getRoleId()) ||
+                            r.getName().equalsIgnoreCase(stepRec.getRoleName()) ||
+                            r.getName().equalsIgnoreCase(stepRec.getRoleId())) {
+                            matchingStep = stepRec;
+                        }
+                    }
+
+                    HttpRequest req = matchingStep != null ? matchingStep.getRequest() : null;
+                    HttpResponse resp = matchingStep != null ? matchingStep.getResponse() : null;
+                    int statusCode = matchingStep != null ? matchingStep.getStatusCode() : 0;
+                    int respLen = matchingStep != null ? matchingStep.getResponseLength() : 0;
+                    long stepTime = matchingStep != null ? matchingStep.getExecutionTimeMs() : result.getTotalDurationMs();
+
+                    String notes = matchingStep != null
+                            ? String.format("Pipeline Step [%s] -> %s (HTTP %d, %d bytes)",
+                                    matchingStep.getStepName(), verdict.name(), statusCode, respLen)
+                            : "Pipeline Studio: " + pipeline.getName() + " -> " + verdict.name();
+
                     AuthorizationCheckResult checkResult = new AuthorizationCheckResult(
                             r.getId(),
                             r.getName(),
                             verdict,
-                            0,
-                            0,
+                            statusCode,
+                            respLen,
                             0.0,
-                            result.getTotalDurationMs(),
-                            "Pipeline Studio: " + pipeline.getName() + " -> " + verdict.name(),
-                            null,
-                            null
+                            stepTime,
+                            notes,
+                            req,
+                            resp
                     );
                     pipelineRecord.addRoleResult(r.getId(), checkResult);
+                }
+
+                // Check for Unauthenticated step execution
+                StepExecutionRecord unauthStep = null;
+                for (StepExecutionRecord stepRec : result.getStepRecords()) {
+                    if ("UNAUTHENTICATED".equalsIgnoreCase(stepRec.getRoleId()) ||
+                        "unauthenticated".equalsIgnoreCase(stepRec.getRoleName()) ||
+                        (stepRec.getRoleName() != null && stepRec.getRoleName().toLowerCase().contains("unauthenticated"))) {
+                        unauthStep = stepRec;
+                    }
+                }
+                if (unauthStep != null) {
+                    AuthorizationCheckResult unauthResult = new AuthorizationCheckResult(
+                            "unauthenticated",
+                            "Unauthenticated",
+                            verdict,
+                            unauthStep.getStatusCode(),
+                            unauthStep.getResponseLength(),
+                            0.0,
+                            unauthStep.getExecutionTimeMs(),
+                            String.format("Pipeline Step [%s] (HTTP %d, %d bytes)",
+                                    unauthStep.getStepName(), unauthStep.getStatusCode(), unauthStep.getResponseLength()),
+                            unauthStep.getRequest(),
+                            unauthStep.getResponse()
+                    );
+                    pipelineRecord.setUnauthenticatedResult(unauthResult);
                 }
 
                 records.add(pipelineRecord);

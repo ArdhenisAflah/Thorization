@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Intercepts Burp Suite HTTP and Proxy traffic, enforcing Safe Request
- * Interception & Drop Control (USP 1) specifically for Proxy traffic (browser/mobile),
+ * Interception & Drop Control specifically for Proxy traffic (browser/mobile),
  * while capturing Repeater traffic as standard audited pass-through.
  */
 public class HttpTrafficHandler implements HttpHandler, ProxyRequestHandler {
@@ -59,7 +59,7 @@ public class HttpTrafficHandler implements HttpHandler, ProxyRequestHandler {
         boolean isTarget = config.isDropTarget(method);
         InterceptionMode mode = config.getInterceptionMode();
 
-        // 1. USP 1: Drop Original & Replay (Safe Mode in Proxy)
+        // 1. Drop Original & Replay (Safe Mode in Proxy)
         if (isTarget && mode == InterceptionMode.DROP_ORIGINAL_AND_REPLAY) {
             proxyHandledMessageIds.add(interceptedRequest.messageId());
             log("[PROXY] DROPPING original request: " + method + " " + url + " (Testing attacker roles safely)");
@@ -68,7 +68,7 @@ public class HttpTrafficHandler implements HttpHandler, ProxyRequestHandler {
             return ProxyRequestReceivedAction.drop();
         }
 
-        // 2. USP 1: Replay First, Then Allow Original
+        // 2. Replay First, Then Allow Original
         if (isTarget && mode == InterceptionMode.REPLAY_FIRST_THEN_ALLOW) {
             proxyHandledMessageIds.add(interceptedRequest.messageId());
             log("[PROXY] REPLAYING FIRST (Holding original): " + method + " " + url);

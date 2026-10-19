@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Master record containing the original transaction, original action status (USP 1),
+ * Master record containing the original transaction, original action status,
  * traffic source tool (Proxy/Repeater/Pipeline), and all role replay outcomes.
  */
 public class AuditRecord {

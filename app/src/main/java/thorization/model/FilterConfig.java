@@ -3,9 +3,10 @@ package thorization.model;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
- * Encapsulates traffic filtering, scope rules, and safe drop control settings (USP 1).
+ * Encapsulates traffic filtering, scope rules, and safe drop control settings.
  */
 public class FilterConfig {
     private boolean onlyInScope;
@@ -15,7 +16,7 @@ public class FilterConfig {
     private String urlIncludeRegex;
     private String urlExcludeRegex;
 
-    // USP 1: Safe Request Interception & Drop Control
+    // Safe Request Interception & Drop Control
     private InterceptionMode interceptionMode;
     private boolean dropAllRequests;
     private Set<String> stateChangingMethods;
@@ -148,16 +149,19 @@ public class FilterConfig {
 
         if (urlIncludeRegex != null && !urlIncludeRegex.trim().isEmpty()) {
             try {
-                if (!url.matches(urlIncludeRegex.trim())) {
+                Pattern p = Pattern.compile(urlIncludeRegex.trim(), Pattern.CASE_INSENSITIVE);
+                if (!p.matcher(url).find()) {
                     return false;
                 }
             } catch (Exception ignored) {
+                return false;
             }
         }
 
         if (urlExcludeRegex != null && !urlExcludeRegex.trim().isEmpty()) {
             try {
-                if (url.matches(urlExcludeRegex.trim())) {
+                Pattern p = Pattern.compile(urlExcludeRegex.trim(), Pattern.CASE_INSENSITIVE);
+                if (p.matcher(url).find()) {
                     return false;
                 }
             } catch (Exception ignored) {
