@@ -53,9 +53,9 @@ public class StatisticsPanel extends JPanel implements EngineListener {
 
         // 2. Interactive JFreeChart Pie Chart in Center
         dataset = new DefaultPieDataset<>();
-        dataset.setValue("Bypass (Vulnerable)", 0);
-        dataset.setValue("Enforced (Protected)", 0);
-        dataset.setValue("Check Manually", 0);
+        dataset.setValue("Bypass", 0);
+        dataset.setValue("Enforced", 0);
+        dataset.setValue("Manual", 0);
 
         chart = ChartFactory.createPieChart(
                 "Authorization Test Distribution",
@@ -114,9 +114,9 @@ public class StatisticsPanel extends JPanel implements EngineListener {
         plot.setLabelFont(new Font("SansSerif", Font.PLAIN, 12));
 
         // Consistent Security Verdict Slices
-        plot.setSectionPaint("Bypass (Vulnerable)", new Color(220, 53, 69));      // Red
-        plot.setSectionPaint("Enforced (Protected)", new Color(40, 167, 69));     // Green
-        plot.setSectionPaint("Check Manually", new Color(255, 152, 0));          // Orange
+        plot.setSectionPaint("Bypass", new Color(220, 53, 69));      // Red
+        plot.setSectionPaint("Enforced", new Color(40, 167, 69));     // Green
+        plot.setSectionPaint("Manual", new Color(255, 152, 0));          // Orange
 
         if (chartPanel != null) {
             chartPanel.setBackground(bg);
@@ -135,9 +135,9 @@ public class StatisticsPanel extends JPanel implements EngineListener {
         JPanel panel = new JPanel(new GridLayout(1, 4, 10, 10));
 
         totalAuditsLabel = createMetricCard(panel, "Total Audited", "0", null);
-        bypassCountLabel = createMetricCard(panel, "Bypass (Vulnerable)", "0 (0%)", new Color(220, 53, 69));
-        enforcedCountLabel = createMetricCard(panel, "Enforced (Protected)", "0 (0%)", new Color(40, 167, 69));
-        manualCountLabel = createMetricCard(panel, "Check Manually", "0 (0%)", new Color(255, 152, 0));
+        bypassCountLabel = createMetricCard(panel, "Bypass", "0 (0%)", new Color(220, 53, 69));
+        enforcedCountLabel = createMetricCard(panel, "Enforced", "0 (0%)", new Color(40, 167, 69));
+        manualCountLabel = createMetricCard(panel, "Manual", "0 (0%)", new Color(255, 152, 0));
 
         return panel;
     }
@@ -190,9 +190,9 @@ public class StatisticsPanel extends JPanel implements EngineListener {
         }
 
         // Update Dataset
-        dataset.setValue("Bypass (Vulnerable)", bypass);
-        dataset.setValue("Enforced (Protected)", enforced);
-        dataset.setValue("Check Manually", indeterminable);
+        dataset.setValue("Bypass", bypass);
+        dataset.setValue("Enforced", enforced);
+        dataset.setValue("Manual", indeterminable);
 
         // Update Metric Cards
         totalAuditsLabel.setText(String.valueOf(records.size()));

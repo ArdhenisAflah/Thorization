@@ -106,7 +106,8 @@ public class TablePanel extends JPanel implements EngineListener {
 
         // Left controls: ON/OFF toggle, status indicator, Drop Mode Dropdown, Drop All Checkbox, Clear
         JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        powerToggleBtn = new JToggleButton("Engine: OFF");
+        powerToggleBtn = new JToggleButton("OFF");
+        powerToggleBtn.setPreferredSize(new Dimension(60, 26));
         powerToggleBtn.setFont(powerToggleBtn.getFont().deriveFont(Font.BOLD, 12f));
         powerToggleBtn.setBackground(new Color(230, 230, 230));
         powerToggleBtn.setToolTipText("Toggle Thorization traffic interception and auto-replay");
@@ -292,14 +293,14 @@ public class TablePanel extends JPanel implements EngineListener {
 
     private void updatePowerButtonUI(boolean active) {
         if (active) {
-            powerToggleBtn.setText("Engine: ON");
+            powerToggleBtn.setText("ON");
             powerToggleBtn.setBackground(new Color(40, 167, 69));
             powerToggleBtn.setForeground(Color.WHITE);
             statusBadgeLabel.setText("● Active");
             statusBadgeLabel.setForeground(new Color(40, 167, 69));
             statusBadgeLabel.setToolTipText("Engine status: Intercepting Traffic");
         } else {
-            powerToggleBtn.setText("Engine: OFF");
+            powerToggleBtn.setText("OFF");
             powerToggleBtn.setBackground(new Color(230, 230, 230));
             powerToggleBtn.setForeground(Color.BLACK);
             statusBadgeLabel.setText("● Idle");

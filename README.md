@@ -37,7 +37,7 @@
 * **"⚡ Send to Pipeline Studio"**: Right-click any requests in the Analysis Table to auto-generate stateful workflow pipelines.
 
 ### 4. 📊 Real-Time Analytics & Statistics Dashboard
-* Interactive dark/light-mode aware **JFreeChart Pie Chart** visualizing the live ratio of **Bypass (Vulnerable)**, **Enforced (Protected)**, and **Indeterminable** endpoints.
+* Interactive dark/light-mode aware **JFreeChart Pie Chart** visualizing the live ratio of **Bypass**, **Enforced**, and **Manual** endpoints.
 * Metric summary cards for rapid executive reporting.
 
 ### 5. 💾 Session State Persistence & Portability
@@ -152,9 +152,9 @@ app/build/libs/Thorization.jar  (~5.4 MB with bundled dependencies)
 1. In the **Interception & Analysis Table** tab, toggle **Thorization Engine: ACTIVE**.
 2. Browse your target web/mobile application through Burp Proxy.
 3. Thorization intercepts matching requests, evaluates attacker roles and unauthenticated replay, and displays color-coded verdicts:
-   * 🔴 **BYPASS (Vulnerable)**: Attacker role received authorized content or status `200 OK`.
-   * 🟢 **ENFORCED (Protected)**: Target endpoint properly returned `401 Unauthorized` / `403 Forbidden`.
-   * 🟠 **CHECK MANUALLY**: Ambiguous response length or status requiring tester review.
+   * 🔴 **BYPASS**: Attacker role received authorized content or status `200 OK`.
+   * 🟢 **ENFORCED**: Target endpoint properly returned `401 Unauthorized` / `403 Forbidden`.
+   * 🟠 **MANUAL**: Ambiguous response length or status requiring tester review.
 
 ### Step 3: Test Stateful BOLA Chains with Pipeline Studio (Tab 3)
 1. Select 2 or more requests in the Analysis Table ➔ Right-Click ➔ **"⚡ Send to Pipeline Studio"**.

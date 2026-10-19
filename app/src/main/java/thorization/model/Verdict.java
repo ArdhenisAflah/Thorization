@@ -6,9 +6,9 @@ import java.awt.Color;
  * Represents the classification verdict for an authorization test.
  */
 public enum Verdict {
-    BYPASS("BYPASS (Vulnerable)", new Color(220, 53, 69), new Color(255, 235, 238)),       // Red
-    ENFORCED("ENFORCED (Protected)", new Color(40, 167, 69), new Color(232, 245, 233)),    // Green
-    INDETERMINABLE("CHECK MANUALLY", new Color(255, 152, 0), new Color(255, 243, 224));   // Orange
+    BYPASS("BYPASS", new Color(220, 53, 69), new Color(255, 235, 238)),       // Red
+    ENFORCED("ENFORCED", new Color(40, 167, 69), new Color(232, 245, 233)),    // Green
+    INDETERMINABLE("MANUAL", new Color(255, 152, 0), new Color(255, 243, 224));   // Orange
 
     private final String displayName;
     private final Color foregroundColor;

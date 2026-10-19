@@ -19,8 +19,8 @@ public class ConditionBranch extends PipelineStep {
 
     public enum BranchAction {
         CONTINUE("Proceed to Next Step"),
-        MARK_VERDICT_BYPASS("Mark as BYPASS (Vulnerable) & Stop"),
-        MARK_VERDICT_ENFORCED("Mark as ENFORCED (Protected) & Stop"),
+        MARK_VERDICT_BYPASS("Mark BYPASS & Stop"),
+        MARK_VERDICT_ENFORCED("Mark ENFORCED & Stop"),
         STOP_PIPELINE("Abort Pipeline Execution");
 
         private final String label;

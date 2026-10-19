@@ -290,7 +290,7 @@ public class PipelineStudioPanel extends JPanel implements EngineListener {
                 ConditionBranch.BranchAction.MARK_VERDICT_BYPASS,
                 ConditionBranch.BranchAction.MARK_VERDICT_ENFORCED
         );
-        branch2.setFailureNote("Attacker query was blocked or returned non-200 (Protected)");
+        branch2.setFailureNote("Attacker query was blocked or returned non-200");
 
         sample.addStep(s1);
         sample.addStep(branch1);
