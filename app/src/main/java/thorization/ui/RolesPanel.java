@@ -85,6 +85,15 @@ public class RolesPanel extends JPanel implements EngineListener {
 
         add(mainSplit, BorderLayout.CENTER);
         refreshRolesTable();
+        if (controller.getRoles().isEmpty()) {
+            clearRoleEditor();
+        } else {
+            selectedRoleIndex = 0;
+            if (rolesTable.getRowCount() > 0) {
+                rolesTable.setRowSelectionInterval(0, 0);
+            }
+            loadRoleToEditor(controller.getRoles().get(0));
+        }
     }
 
     private JPanel createRolesListPanel() {
@@ -181,6 +190,7 @@ public class RolesPanel extends JPanel implements EngineListener {
         gbc.gridx = 1; gbc.weightx = 1.0;
         roleNameField = new JTextField(20);
         roleNameField.setPreferredSize(new Dimension(220, 28));
+        roleNameField.setToolTipText("e.g. Attacker, Victim, Admin, Guest");
         formPanel.add(roleNameField, gbc);
 
         // Role Enabled
@@ -195,8 +205,9 @@ public class RolesPanel extends JPanel implements EngineListener {
         gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0;
         formPanel.add(new JLabel("Cookie Header:"), gbc);
         gbc.gridx = 1; gbc.weightx = 1.0;
-        cookiesField = new JTextField("session=user_b_token; auth=active", 20);
+        cookiesField = new JTextField(20);
         cookiesField.setPreferredSize(new Dimension(220, 28));
+        cookiesField.setToolTipText("e.g. session=user_token; auth=active");
         formPanel.add(cookiesField, gbc);
 
         // Custom Headers Area
@@ -205,7 +216,8 @@ public class RolesPanel extends JPanel implements EngineListener {
         gbc.gridx = 1; gbc.weightx = 1.0; gbc.weighty = 1.0; gbc.fill = GridBagConstraints.BOTH;
         headersArea = new JTextArea(5, 20);
         headersArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-        headersArea.setText("Authorization: Bearer token_for_user_b\nX-User-Id: 102\nX-Role: user");
+        headersArea.setText("");
+        headersArea.setToolTipText("e.g. Authorization: Bearer <TOKEN>\nX-User-Id: 102");
         JScrollPane headersScroll = new JScrollPane(headersArea);
         headersScroll.setPreferredSize(new Dimension(220, 90));
         formPanel.add(headersScroll, gbc);
@@ -373,6 +385,17 @@ public class RolesPanel extends JPanel implements EngineListener {
         }
     }
 
+    private void clearRoleEditor() {
+        selectedRoleIndex = -1;
+        if (rolesTable != null) {
+            rolesTable.clearSelection();
+        }
+        if (roleNameField != null) roleNameField.setText("");
+        if (roleEnabledCheckBox != null) roleEnabledCheckBox.setSelected(true);
+        if (cookiesField != null) cookiesField.setText("");
+        if (headersArea != null) headersArea.setText("");
+    }
+
     private void loadRoleToEditor(UserRole role) {
         if (role == null) return;
         roleNameField.setText(role.getName());
@@ -382,25 +405,29 @@ public class RolesPanel extends JPanel implements EngineListener {
     }
 
     private void onAddNewRole() {
-        String name = JOptionPane.showInputDialog(this, "Enter Role Name (e.g. User C / Member):", "New Role", JOptionPane.PLAIN_MESSAGE);
-        if (name != null && !name.trim().isEmpty()) {
-            UserRole newRole = new UserRole(name.trim(), "Authorization: Bearer <TOKEN>\n", "");
-            controller.addRole(newRole);
-            refreshRolesTable();
-            rolesTable.setRowSelectionInterval(rolesTable.getRowCount() - 1, rolesTable.getRowCount() - 1);
+        clearRoleEditor();
+        if (roleNameField != null) {
+            roleNameField.requestFocusInWindow();
         }
     }
 
     private void onRemoveRole() {
         if (selectedRoleIndex >= 0 && selectedRoleIndex < controller.getRoles().size()) {
-            if (controller.getRoles().size() <= 1) {
-                JOptionPane.showMessageDialog(this, "At least one role is required.", "Warning", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
             UserRole toRemove = controller.getRoles().get(selectedRoleIndex);
             controller.removeRole(toRemove.getId());
             refreshRolesTable();
-            selectedRoleIndex = -1;
+            if (!controller.getRoles().isEmpty()) {
+                int nextIndex = Math.min(selectedRoleIndex, controller.getRoles().size() - 1);
+                selectedRoleIndex = nextIndex;
+                if (nextIndex >= 0 && nextIndex < rolesTable.getRowCount()) {
+                    rolesTable.setRowSelectionInterval(nextIndex, nextIndex);
+                }
+                loadRoleToEditor(controller.getRoles().get(nextIndex));
+            } else {
+                clearRoleEditor();
+            }
+        } else {
+            JOptionPane.showMessageDialog(this, "Please select a role from the list to remove.", "Info", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
@@ -408,21 +435,52 @@ public class RolesPanel extends JPanel implements EngineListener {
         if (selectedRoleIndex >= 0 && selectedRoleIndex < controller.getRoles().size()) {
             UserRole current = controller.getRoles().get(selectedRoleIndex);
             UserRole clone = new UserRole(current.getName() + " (Copy)", current.getRawHeaders(), current.getRawCookies());
+            clone.setEnabled(current.isEnabled());
             controller.addRole(clone);
             refreshRolesTable();
+            int newIndex = controller.getRoles().size() - 1;
+            selectedRoleIndex = newIndex;
+            if (newIndex >= 0 && newIndex < rolesTable.getRowCount()) {
+                rolesTable.setRowSelectionInterval(newIndex, newIndex);
+            }
+            loadRoleToEditor(clone);
+        } else {
+            JOptionPane.showMessageDialog(this, "Please select a role to duplicate.", "Info", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
     private void onSaveCurrentRole() {
+        String name = roleNameField.getText().trim();
+        if (name.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter a Role Name before saving.", "Validation Error", JOptionPane.WARNING_MESSAGE);
+            roleNameField.requestFocusInWindow();
+            return;
+        }
+
         if (selectedRoleIndex >= 0 && selectedRoleIndex < controller.getRoles().size()) {
             UserRole role = controller.getRoles().get(selectedRoleIndex);
-            role.setName(roleNameField.getText().trim());
+            role.setName(name);
             role.setEnabled(roleEnabledCheckBox.isSelected());
             role.setRawCookies(cookiesField.getText().trim());
             role.setRawHeaders(headersArea.getText());
             controller.updateRole(role);
             refreshRolesTable();
+            if (selectedRoleIndex >= 0 && selectedRoleIndex < rolesTable.getRowCount()) {
+                rolesTable.setRowSelectionInterval(selectedRoleIndex, selectedRoleIndex);
+            }
             JOptionPane.showMessageDialog(this, "Role '" + role.getName() + "' saved successfully!", "Saved", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            // First time load or no role selected: create and add role directly from form
+            UserRole newRole = new UserRole(name, headersArea.getText(), cookiesField.getText().trim());
+            newRole.setEnabled(roleEnabledCheckBox.isSelected());
+            controller.addRole(newRole);
+            refreshRolesTable();
+            int newIndex = controller.getRoles().size() - 1;
+            selectedRoleIndex = newIndex;
+            if (newIndex >= 0 && newIndex < rolesTable.getRowCount()) {
+                rolesTable.setRowSelectionInterval(newIndex, newIndex);
+            }
+            JOptionPane.showMessageDialog(this, "Role '" + newRole.getName() + "' created and saved successfully!", "Role Saved", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
