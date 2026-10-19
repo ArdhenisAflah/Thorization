@@ -49,10 +49,13 @@ public class SessionExporter {
         }
         root.add("roles", rolesArray);
 
-        // 2. Pipelines (Batch 3)
+        // 2. Pipelines: only export genuine user pipelines (omit unedited default sample pipeline)
         if (pipelines != null && !pipelines.isEmpty()) {
             JsonArray pipelinesArray = new JsonArray();
             for (Pipeline p : pipelines) {
+                if (p.isSample()) {
+                    continue; // Skip hallucinated/sample pipeline template
+                }
                 JsonObject pObj = new JsonObject();
                 pObj.addProperty("id", p.getId());
                 pObj.addProperty("name", p.getName());
@@ -99,7 +102,9 @@ public class SessionExporter {
                 pObj.add("steps", stepsArray);
                 pipelinesArray.add(pObj);
             }
-            root.add("pipelines", pipelinesArray);
+            if (pipelinesArray.size() > 0) {
+                root.add("pipelines", pipelinesArray);
+            }
         }
 
         // 3. Records
@@ -111,39 +116,43 @@ public class SessionExporter {
             recObj.addProperty("sourceTool", record.getSourceTool());
             recObj.addProperty("method", record.getMethod());
             recObj.addProperty("url", record.getUrl());
-            recObj.addProperty("path", record.getPath());
             recObj.addProperty("originalStatusCode", record.getOriginalStatusCode());
             recObj.addProperty("originalResponseLength", record.getOriginalResponseLength());
-            recObj.addProperty("isStateChanging", record.isStateChanging());
             recObj.addProperty("originalAction", record.getOriginalAction() != null ? record.getOriginalAction().name() : "PASSED");
 
-            // Pipeline Execution Details
-            recObj.addProperty("isPipelineExecution", record.isPipelineExecution());
+            // Pipeline Execution Details - only included if actual pipeline execution
             if (record.isPipelineExecution()) {
-                recObj.addProperty("pipelineName", record.getPipelineName());
-                recObj.addProperty("pipelineTrace", record.getPipelineTrace());
+                recObj.addProperty("isPipelineExecution", true);
+                if (record.getPipelineName() != null) {
+                    recObj.addProperty("pipelineName", record.getPipelineName());
+                }
+                if (record.getPipelineTrace() != null) {
+                    recObj.addProperty("pipelineTrace", record.getPipelineTrace());
+                }
             }
 
             // Save requests / responses text if available
-            if (record.getOriginalRequest() != null) {
-                recObj.addProperty("originalRequest", record.getOriginalRequest().toString());
+            String origReq = record.getOriginalRequest() != null ? record.getOriginalRequest().toString() : record.getSerializedOriginalRequest();
+            if (origReq != null && !origReq.isEmpty()) {
+                recObj.addProperty("originalRequest", origReq);
             }
-            if (record.getOriginalResponse() != null) {
-                recObj.addProperty("originalResponse", record.getOriginalResponse().toString());
+            String origResp = record.getOriginalResponse() != null ? record.getOriginalResponse().toString() : record.getSerializedOriginalResponse();
+            if (origResp != null && !origResp.isEmpty()) {
+                recObj.addProperty("originalResponse", origResp);
             }
 
             // Roles Replay Results
             JsonObject roleResultsObj = new JsonObject();
             for (Map.Entry<String, AuthorizationCheckResult> entry : record.getRoleResults().entrySet()) {
                 AuthorizationCheckResult res = entry.getValue();
-                JsonObject resObj = serializeResult(res);
+                JsonObject resObj = serializeResult(res, false);
                 roleResultsObj.add(entry.getKey(), resObj);
             }
             recObj.add("roleResults", roleResultsObj);
 
             // Unauthenticated Result
             if (record.getUnauthenticatedResult() != null) {
-                recObj.add("unauthenticatedResult", serializeResult(record.getUnauthenticatedResult()));
+                recObj.add("unauthenticatedResult", serializeResult(record.getUnauthenticatedResult(), true));
             }
 
             recordsArray.add(recObj);
@@ -155,21 +164,26 @@ public class SessionExporter {
         }
     }
 
-    private static JsonObject serializeResult(AuthorizationCheckResult res) {
+    private static JsonObject serializeResult(AuthorizationCheckResult res, boolean isUnauth) {
         JsonObject resObj = new JsonObject();
-        resObj.addProperty("roleId", res.getRoleId());
-        resObj.addProperty("roleName", res.getRoleName());
+        if (!isUnauth && res.getRoleName() != null) {
+            resObj.addProperty("roleName", res.getRoleName());
+        }
         resObj.addProperty("verdict", res.getVerdict() != null ? res.getVerdict().name() : "");
         resObj.addProperty("statusCode", res.getStatusCode());
         resObj.addProperty("responseLength", res.getResponseLength());
         resObj.addProperty("similarityScore", res.getSimilarityScore());
         resObj.addProperty("executionTimeMs", res.getExecutionTimeMs());
-        resObj.addProperty("notes", res.getNotes());
-        if (res.getRequest() != null) {
-            resObj.addProperty("request", res.getRequest().toString());
+        if (res.getNotes() != null && !res.getNotes().isEmpty()) {
+            resObj.addProperty("notes", res.getNotes());
         }
-        if (res.getResponse() != null) {
-            resObj.addProperty("response", res.getResponse().toString());
+        String req = res.getRequest() != null ? res.getRequest().toString() : res.getSerializedRequest();
+        if (req != null && !req.isEmpty()) {
+            resObj.addProperty("request", req);
+        }
+        String resp = res.getResponse() != null ? res.getResponse().toString() : res.getSerializedResponse();
+        if (resp != null && !resp.isEmpty()) {
+            resObj.addProperty("response", resp);
         }
         return resObj;
     }

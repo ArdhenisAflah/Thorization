@@ -16,6 +16,7 @@ public class Pipeline {
     private String description;
     private List<PipelineStep> steps;
     private Map<String, String> initialVariables;
+    private boolean sample = false;
 
     public Pipeline() {
         this.id = UUID.randomUUID().toString();
@@ -97,6 +98,14 @@ public class Pipeline {
 
     public void setInitialVariables(Map<String, String> initialVariables) {
         this.initialVariables = initialVariables != null ? initialVariables : new LinkedHashMap<>();
+    }
+
+    public boolean isSample() {
+        return sample;
+    }
+
+    public void setSample(boolean sample) {
+        this.sample = sample;
     }
 
     @Override

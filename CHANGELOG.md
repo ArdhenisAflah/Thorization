@@ -4,7 +4,22 @@ All notable changes, patches, UI improvements, and bug fixes for the **Thorizati
 
 ---
 
-## [v1.3.1] - 2026-10-13 (Current)
+## [v1.3.2] - 2026-10-20 (Current)
+### 🐛 Fixed & Refined (Session Export / Import & Viewer Data Integrity)
+- **Resolved Blank Request & Response Viewers on Import**:
+  - Restored full deserialization of HTTP request and response payloads from session JSON into Montoya `HttpRequest` and `HttpResponse` objects.
+  - Added lazy reconstruction and raw string fallbacks in `AuthorizationCheckResult` and `AuditRecord`.
+  - Preserved original record timestamps (`HH:mm:ss`) upon session import and auto-selected first row for immediate display.
+- **Removed Bloat, Redundant Keys & Dummy Data**:
+  - Excluded auto-generated sample pipelines (`BOLA Cross-Role Data Verification`) from session export if unedited.
+  - Pruned redundant keys from exported JSON (`path`, `isStateChanging`, duplicate `roleId` inside role results map, and `isPipelineExecution` when false).
+  - Maintained 100% backwards compatibility for legacy exported files.
+- **Interactive Import Confirmation**:
+  - Added Replace vs. Append confirmation modal in `TablePanel` before loading session files into an active session.
+
+---
+
+## [v1.3.1] - 2026-10-13
 ### 🔄 Refactored & Paused (Pipeline Studio Architectural Pivot & UI Streamlining)
 - **Pipeline Studio Paused for Future Development**:
   - Re-designated Tab 3 as **"Pipeline Studio (WIP)"** to pivot project focus towards high-efficiency core features (Safe Drop interception, multi-role replay) and AI LLM (MCP) integration.

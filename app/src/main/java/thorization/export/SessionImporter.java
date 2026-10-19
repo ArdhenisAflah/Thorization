@@ -1,5 +1,7 @@
 package thorization.export;
 
+import burp.api.montoya.http.message.requests.HttpRequest;
+import burp.api.montoya.http.message.responses.HttpResponse;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -20,6 +22,7 @@ import thorization.model.pipeline.RequestStep;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +30,7 @@ import java.util.Map;
 
 /**
  * Handles deserializing JSON audit session files into model objects, roles, and pipeline scenarios.
+ * Fully backwards-compatible with legacy and current export structures.
  */
 public class SessionImporter {
 
@@ -50,7 +54,7 @@ public class SessionImporter {
                 }
             }
 
-            // 2. Pipelines (Batch 3)
+            // 2. Pipelines
             List<Pipeline> pipelines = new ArrayList<>();
             if (root.has("pipelines")) {
                 JsonArray pipelinesArray = root.getAsJsonArray("pipelines");
@@ -136,16 +140,59 @@ public class SessionImporter {
                     String method = recObj.has("method") ? recObj.get("method").getAsString() : "GET";
                     String url = recObj.has("url") ? recObj.get("url").getAsString() : "";
                     String path = recObj.has("path") ? recObj.get("path").getAsString() : "";
-                    int origStatus = recObj.has("originalStatusCode") ? recObj.get("originalStatusCode").getAsInt() : 200;
+                    if (path.isEmpty() && !url.isEmpty()) {
+                        try {
+                            URI uri = URI.create(url);
+                            path = uri.getRawPath() != null ? uri.getRawPath() : "/";
+                            if (uri.getRawQuery() != null) {
+                                path += "?" + uri.getRawQuery();
+                            }
+                        } catch (Exception e) {
+                            path = "/";
+                        }
+                    }
+
+                    int origStatus = recObj.has("originalStatusCode") ? recObj.get("originalStatusCode").getAsInt() : 0;
                     int origLen = recObj.has("originalResponseLength") ? recObj.get("originalResponseLength").getAsInt() : 0;
                     String sourceTool = recObj.has("sourceTool") ? recObj.get("sourceTool").getAsString() : "Proxy";
 
-                    AuditRecord record = createImportedRecord(id, method, url, path, origStatus, origLen, sourceTool);
-
+                    OriginalAction originalAction = OriginalAction.PASSED;
                     if (recObj.has("originalAction")) {
                         try {
-                            record.setOriginalAction(OriginalAction.valueOf(recObj.get("originalAction").getAsString()));
+                            originalAction = OriginalAction.valueOf(recObj.get("originalAction").getAsString());
                         } catch (Exception ignored) {}
+                    }
+
+                    AuditRecord record = new AuditRecord(id, null, originalAction, sourceTool);
+                    if (recObj.has("timestamp")) {
+                        record.setTimestamp(recObj.get("timestamp").getAsString());
+                    }
+                    record.setMethod(method);
+                    record.setUrl(url);
+                    record.setPath(path);
+                    record.setOriginalStatusCode(origStatus);
+                    record.setOriginalResponseLength(origLen);
+
+                    // Reconstruct Montoya HttpRequest for Original Traffic
+                    if (recObj.has("originalRequest") && !recObj.get("originalRequest").isJsonNull()) {
+                        String origReqStr = recObj.get("originalRequest").getAsString();
+                        record.setSerializedOriginalRequest(origReqStr);
+                        if (!origReqStr.isEmpty()) {
+                            try {
+                                record.setOriginalRequest(HttpRequest.httpRequest(origReqStr));
+                            } catch (Throwable ignored) {}
+                        }
+                    }
+
+                    // Reconstruct Montoya HttpResponse for Original Traffic
+                    if (recObj.has("originalResponse") && !recObj.get("originalResponse").isJsonNull()) {
+                        String origRespStr = recObj.get("originalResponse").getAsString();
+                        record.setSerializedOriginalResponse(origRespStr);
+                        if (!origRespStr.isEmpty()) {
+                            try {
+                                record.setOriginalResponse(HttpResponse.httpResponse(origRespStr));
+                            } catch (Throwable ignored) {}
+                        }
                     }
 
                     if (recObj.has("isPipelineExecution") && recObj.get("isPipelineExecution").getAsBoolean()) {
@@ -157,13 +204,20 @@ public class SessionImporter {
                     if (recObj.has("roleResults")) {
                         JsonObject roleResultsObj = recObj.getAsJsonObject("roleResults");
                         for (Map.Entry<String, JsonElement> entry : roleResultsObj.entrySet()) {
-                            AuthorizationCheckResult result = deserializeResult(entry.getValue().getAsJsonObject());
-                            record.addRoleResult(entry.getKey(), result);
+                            String roleId = entry.getKey();
+                            String defaultRoleName = roles.stream()
+                                    .filter(r -> r.getId().equals(roleId))
+                                    .map(UserRole::getName)
+                                    .findFirst()
+                                    .orElse("Role " + roleId);
+
+                            AuthorizationCheckResult result = deserializeResult(entry.getValue().getAsJsonObject(), roleId, defaultRoleName);
+                            record.addRoleResult(roleId, result);
                         }
                     }
 
                     if (recObj.has("unauthenticatedResult") && !recObj.get("unauthenticatedResult").isJsonNull()) {
-                        AuthorizationCheckResult unauth = deserializeResult(recObj.getAsJsonObject("unauthenticatedResult"));
+                        AuthorizationCheckResult unauth = deserializeResult(recObj.getAsJsonObject("unauthenticatedResult"), "unauthenticated", "Unauthenticated");
                         record.setUnauthenticatedResult(unauth);
                     }
 
@@ -175,13 +229,9 @@ public class SessionImporter {
         }
     }
 
-    private static AuditRecord createImportedRecord(long id, String method, String url, String path, int status, int len, String sourceTool) {
-        return new ImportedAuditRecord(id, method, url, path, status, len, sourceTool);
-    }
-
-    private static AuthorizationCheckResult deserializeResult(JsonObject obj) {
-        String roleId = obj.has("roleId") ? obj.get("roleId").getAsString() : "";
-        String roleName = obj.has("roleName") ? obj.get("roleName").getAsString() : "";
+    private static AuthorizationCheckResult deserializeResult(JsonObject obj, String defaultRoleId, String defaultRoleName) {
+        String roleId = obj.has("roleId") ? obj.get("roleId").getAsString() : defaultRoleId;
+        String roleName = obj.has("roleName") ? obj.get("roleName").getAsString() : defaultRoleName;
         Verdict verdict = Verdict.INDETERMINABLE;
         if (obj.has("verdict")) {
             try {
@@ -194,9 +244,38 @@ public class SessionImporter {
         long execTime = obj.has("executionTimeMs") ? obj.get("executionTimeMs").getAsLong() : 0;
         String notes = obj.has("notes") ? obj.get("notes").getAsString() : "";
 
-        return new AuthorizationCheckResult(
-                roleId, roleName, verdict, statusCode, responseLength, similarityScore, execTime, notes, null, null
+        HttpRequest request = null;
+        String reqStr = null;
+        if (obj.has("request") && !obj.get("request").isJsonNull()) {
+            reqStr = obj.get("request").getAsString();
+            if (!reqStr.isEmpty()) {
+                try {
+                    request = HttpRequest.httpRequest(reqStr);
+                } catch (Throwable ignored) {}
+            }
+        }
+
+        HttpResponse response = null;
+        String respStr = null;
+        if (obj.has("response") && !obj.get("response").isJsonNull()) {
+            respStr = obj.get("response").getAsString();
+            if (!respStr.isEmpty()) {
+                try {
+                    response = HttpResponse.httpResponse(respStr);
+                } catch (Throwable ignored) {}
+            }
+        }
+
+        AuthorizationCheckResult checkResult = new AuthorizationCheckResult(
+                roleId, roleName, verdict, statusCode, responseLength, similarityScore, execTime, notes, request, response
         );
+        if (reqStr != null) {
+            checkResult.setSerializedRequest(reqStr);
+        }
+        if (respStr != null) {
+            checkResult.setSerializedResponse(respStr);
+        }
+        return checkResult;
     }
 
     public static class ImportResult {
@@ -225,31 +304,5 @@ public class SessionImporter {
         public List<Pipeline> getPipelines() {
             return pipelines;
         }
-    }
-
-    private static class ImportedAuditRecord extends AuditRecord {
-        private final long id;
-        private final String method;
-        private final String url;
-        private final String path;
-        private final int origStatus;
-        private final int origLen;
-
-        public ImportedAuditRecord(long id, String method, String url, String path, int status, int len, String sourceTool) {
-            super(id, null, OriginalAction.PASSED, sourceTool);
-            this.id = id;
-            this.method = method;
-            this.url = url;
-            this.path = path;
-            this.origStatus = status;
-            this.origLen = len;
-        }
-
-        @Override public long getId() { return id; }
-        @Override public String getMethod() { return method; }
-        @Override public String getUrl() { return url; }
-        @Override public String getPath() { return path; }
-        @Override public int getOriginalStatusCode() { return origStatus; }
-        @Override public int getOriginalResponseLength() { return origLen; }
     }
 }

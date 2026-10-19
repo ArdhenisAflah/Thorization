@@ -437,7 +437,38 @@ public class TablePanel extends JPanel implements EngineListener {
             File sourceFile = chooser.getSelectedFile();
             try {
                 SessionImporter.ImportResult result = SessionImporter.importFromFile(sourceFile);
-                controller.importRecords(result.getRecords(), result.getRoles(), result.getPipelines());
+
+                boolean replace = true;
+                if (!controller.getRecords().isEmpty()) {
+                    String[] options = {"Replace", "Append", "Cancel"};
+                    int choice = JOptionPane.showOptionDialog(
+                            this,
+                            "How would you like to import this session?\n\n"
+                                    + "• Replace: Clear existing records and load imported session.\n"
+                                    + "• Append: Keep existing records and add imported records.",
+                            "Import Session",
+                            JOptionPane.DEFAULT_OPTION,
+                            JOptionPane.QUESTION_MESSAGE,
+                            null,
+                            options,
+                            options[0]
+                    );
+                    if (choice == 2 || choice == JOptionPane.CLOSED_OPTION) {
+                        return; // User cancelled
+                    }
+                    replace = (choice == 0);
+                }
+
+                controller.importRecords(result.getRecords(), result.getRoles(), result.getPipelines(), replace);
+
+                if (!result.getRecords().isEmpty()) {
+                    auditTable.setRowSelectionInterval(0, 0);
+                    AuditRecord firstRecord = tableModel.getRecordAt(0);
+                    if (firstRecord != null) {
+                        viewerPanel.displayRecord(firstRecord, controller.getRoles());
+                    }
+                }
+
                 JOptionPane.showMessageDialog(this, "Imported " + result.getRecords().size() + " records, "
                                 + result.getRoles().size() + " roles, and "
                                 + result.getPipelines().size() + " pipeline scenarios successfully.",

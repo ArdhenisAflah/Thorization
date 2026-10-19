@@ -17,6 +17,8 @@ public class AuthorizationCheckResult {
     private String notes;
     private transient HttpRequest request;
     private transient HttpResponse response;
+    private String serializedRequest;
+    private String serializedResponse;
 
     public AuthorizationCheckResult() {
     }
@@ -35,6 +37,12 @@ public class AuthorizationCheckResult {
         this.notes = notes;
         this.request = request;
         this.response = response;
+        if (request != null) {
+            try { this.serializedRequest = request.toString(); } catch (Throwable ignored) {}
+        }
+        if (response != null) {
+            try { this.serializedResponse = response.toString(); } catch (Throwable ignored) {}
+        }
     }
 
     public String getRoleId() {
@@ -102,19 +110,55 @@ public class AuthorizationCheckResult {
     }
 
     public HttpRequest getRequest() {
+        if (request == null && serializedRequest != null && !serializedRequest.isEmpty()) {
+            try {
+                request = HttpRequest.httpRequest(serializedRequest);
+            } catch (Throwable ignored) {}
+        }
         return request;
     }
 
     public void setRequest(HttpRequest request) {
         this.request = request;
+        if (request != null) {
+            try {
+                this.serializedRequest = request.toString();
+            } catch (Throwable ignored) {}
+        }
     }
 
     public HttpResponse getResponse() {
+        if (response == null && serializedResponse != null && !serializedResponse.isEmpty()) {
+            try {
+                response = HttpResponse.httpResponse(serializedResponse);
+            } catch (Throwable ignored) {}
+        }
         return response;
     }
 
     public void setResponse(HttpResponse response) {
         this.response = response;
+        if (response != null) {
+            try {
+                this.serializedResponse = response.toString();
+            } catch (Throwable ignored) {}
+        }
+    }
+
+    public String getSerializedRequest() {
+        return serializedRequest;
+    }
+
+    public void setSerializedRequest(String serializedRequest) {
+        this.serializedRequest = serializedRequest;
+    }
+
+    public String getSerializedResponse() {
+        return serializedResponse;
+    }
+
+    public void setSerializedResponse(String serializedResponse) {
+        this.serializedResponse = serializedResponse;
     }
 }
 

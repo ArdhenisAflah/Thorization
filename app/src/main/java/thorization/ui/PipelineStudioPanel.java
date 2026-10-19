@@ -263,6 +263,7 @@ public class PipelineStudioPanel extends JPanel implements EngineListener {
 
     private void createDefaultSamplePipeline() {
         Pipeline sample = new Pipeline("BOLA Cross-Role Data Verification", "Tests if User 2 can read records created by User 1");
+        sample.setSample(true);
         String role1 = !currentRoles.isEmpty() ? currentRoles.get(0).getId() : "UNAUTHENTICATED";
         String role2 = currentRoles.size() > 1 ? currentRoles.get(1).getId() : "UNAUTHENTICATED";
 

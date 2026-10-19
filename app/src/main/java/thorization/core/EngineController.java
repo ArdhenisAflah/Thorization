@@ -454,22 +454,55 @@ public class EngineController {
     }
 
     public synchronized void importRecords(List<AuditRecord> importedRecords, List<UserRole> importedRoles) {
-        importRecords(importedRecords, importedRoles, null);
+        importRecords(importedRecords, importedRoles, null, true);
     }
 
     public synchronized void importRecords(List<AuditRecord> importedRecords, List<UserRole> importedRoles, List<Pipeline> importedPipelines) {
-        if (importedRoles != null && !importedRoles.isEmpty()) {
-            roles.clear();
-            roles.addAll(importedRoles);
-            notifyRolesChanged();
+        importRecords(importedRecords, importedRoles, importedPipelines, true);
+    }
+
+    public synchronized void importRecords(List<AuditRecord> importedRecords, List<UserRole> importedRoles, List<Pipeline> importedPipelines, boolean replace) {
+        if (replace) {
+            clearRecords();
+            if (importedRoles != null && !importedRoles.isEmpty()) {
+                roles.clear();
+                roles.addAll(importedRoles);
+                notifyRolesChanged();
+            }
+            if (importedPipelines != null && !importedPipelines.isEmpty()) {
+                pipelines.clear();
+                pipelines.addAll(importedPipelines);
+                notifyPipelinesChanged();
+            }
+        } else {
+            if (importedRoles != null) {
+                for (UserRole r : importedRoles) {
+                    if (roles.stream().noneMatch(existing -> existing.getId().equals(r.getId()))) {
+                        roles.add(r);
+                    }
+                }
+                notifyRolesChanged();
+            }
+            if (importedPipelines != null) {
+                for (Pipeline p : importedPipelines) {
+                    if (pipelines.stream().noneMatch(existing -> existing.getId().equals(p.getId()))) {
+                        pipelines.add(p);
+                    }
+                }
+                notifyPipelinesChanged();
+            }
         }
-        if (importedPipelines != null && !importedPipelines.isEmpty()) {
-            pipelines.clear();
-            pipelines.addAll(importedPipelines);
-            notifyPipelinesChanged();
-        }
+
         if (importedRecords != null && !importedRecords.isEmpty()) {
-            records.clear();
+            long maxId = 0;
+            for (AuditRecord r : records) {
+                if (r.getId() > maxId) maxId = r.getId();
+            }
+            for (AuditRecord r : importedRecords) {
+                if (r.getId() > maxId) maxId = r.getId();
+            }
+            recordIdCounter.set(maxId + 1);
+
             records.addAll(importedRecords);
             for (AuditRecord r : importedRecords) {
                 notifyRecordAdded(r);

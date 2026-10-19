@@ -225,19 +225,39 @@ public class AuditRecord {
     }
 
     public HttpRequest getOriginalRequest() {
+        if (originalRequest == null && serializedOriginalRequest != null && !serializedOriginalRequest.isEmpty()) {
+            try {
+                originalRequest = HttpRequest.httpRequest(serializedOriginalRequest);
+            } catch (Throwable ignored) {}
+        }
         return originalRequest;
     }
 
     public void setOriginalRequest(HttpRequest originalRequest) {
         this.originalRequest = originalRequest;
+        if (originalRequest != null) {
+            try {
+                this.serializedOriginalRequest = originalRequest.toString();
+            } catch (Throwable ignored) {}
+        }
     }
 
     public HttpResponse getOriginalResponse() {
+        if (originalResponse == null && serializedOriginalResponse != null && !serializedOriginalResponse.isEmpty()) {
+            try {
+                originalResponse = HttpResponse.httpResponse(serializedOriginalResponse);
+            } catch (Throwable ignored) {}
+        }
         return originalResponse;
     }
 
     public void setOriginalResponse(HttpResponse originalResponse) {
         this.originalResponse = originalResponse;
+        if (originalResponse != null) {
+            try {
+                this.serializedOriginalResponse = originalResponse.toString();
+            } catch (Throwable ignored) {}
+        }
     }
 
     public Map<String, AuthorizationCheckResult> getRoleResults() {

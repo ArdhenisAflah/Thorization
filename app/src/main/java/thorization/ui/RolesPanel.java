@@ -25,6 +25,7 @@ import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -383,16 +384,29 @@ public class RolesPanel extends JPanel implements EngineListener {
     }
 
     private void refreshRolesTable() {
-        tableModel.setRowCount(0);
-        List<UserRole> roles = controller.getRoles();
-        for (int i = 0; i < roles.size(); i++) {
-            UserRole role = roles.get(i);
-            tableModel.addRow(new Object[]{
-                    "#" + (i + 1),
-                    role.getName(),
-                    role.isEnabled() ? "Active" : "Disabled",
-                    role.getParsedHeaders().size() + " headers"
-            });
+        Runnable task = () -> {
+            synchronized (tableModel) {
+                tableModel.setRowCount(0);
+                List<UserRole> roles = controller.getRoles();
+                for (int i = 0; i < roles.size(); i++) {
+                    UserRole role = roles.get(i);
+                    tableModel.addRow(new Object[]{
+                            "#" + (i + 1),
+                            role.getName(),
+                            role.isEnabled() ? "Active" : "Disabled",
+                            role.getParsedHeaders().size() + " headers"
+                    });
+                }
+            }
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            task.run();
+        } else {
+            try {
+                SwingUtilities.invokeAndWait(task);
+            } catch (Exception e) {
+                task.run();
+            }
         }
     }
 
