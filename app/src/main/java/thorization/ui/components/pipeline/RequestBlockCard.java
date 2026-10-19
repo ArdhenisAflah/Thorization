@@ -72,7 +72,7 @@ public class RequestBlockCard extends JPanel {
         nameField = new JTextField(step.getName(), 18);
         nameField.setFont(nameField.getFont().deriveFont(Font.BOLD, 12f));
         nameField.setPreferredSize(new Dimension(200, 26));
-        nameField.setToolTipText("Descriptive step name (e.g. Create Order, Read Profile)");
+        nameField.setToolTipText("Step identifier label (string)");
 
         JPanel titleLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         titleLeft.setOpaque(false);
@@ -122,7 +122,7 @@ public class RequestBlockCard extends JPanel {
         gbc.gridx = 1; gbc.weightx = 1.0;
         urlField = new JTextField(step.getUrlTemplate());
         urlField.setPreferredSize(new Dimension(260, 26));
-        urlField.setToolTipText("Request URL (supports placeholders like {{VAR_ID}})");
+        urlField.setToolTipText("Target HTTP/HTTPS URL or path (string with optional {{VAR}} placeholders)");
         fieldsPanel.add(urlField, gbc);
 
         gbc.gridx = 2; gbc.weightx = 0.0;
@@ -152,14 +152,14 @@ public class RequestBlockCard extends JPanel {
 
         headersArea = new JTextArea(step.getHeadersTemplate(), 3, 30);
         headersArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-        headersArea.setToolTipText("Custom request headers template (supports {{VAR_ID}})");
+        headersArea.setToolTipText("Multiline HTTP headers to inject: Header-Name: value (supports {{VAR}})");
         JScrollPane headersScroll = new JScrollPane(headersArea);
         headersScroll.setPreferredSize(new Dimension(300, 90));
         payloadTabs.addTab("Headers (supports {{VAR}})", headersScroll);
 
         bodyArea = new JTextArea(step.getBodyTemplate(), 4, 30);
         bodyArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-        bodyArea.setToolTipText("Body payload template (supports {{VAR_ID}})");
+        bodyArea.setToolTipText("Request payload content (string, JSON, or form-data with optional {{VAR}})");
         JScrollPane bodyScroll = new JScrollPane(bodyArea);
         bodyScroll.setPreferredSize(new Dimension(300, 90));
         payloadTabs.addTab("Body Template (supports {{VAR}})", bodyScroll);

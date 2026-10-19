@@ -27,9 +27,11 @@ import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GraphicsEnvironment;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -190,7 +192,7 @@ public class RolesPanel extends JPanel implements EngineListener {
         gbc.gridx = 1; gbc.weightx = 1.0;
         roleNameField = new JTextField(20);
         roleNameField.setPreferredSize(new Dimension(220, 28));
-        roleNameField.setToolTipText("e.g. Attacker, Victim, Admin, Guest");
+        roleNameField.setToolTipText("Role identifier name (string)");
         formPanel.add(roleNameField, gbc);
 
         // Role Enabled
@@ -199,6 +201,7 @@ public class RolesPanel extends JPanel implements EngineListener {
         gbc.gridx = 1; gbc.weightx = 1.0;
         roleEnabledCheckBox = new JCheckBox("Enable this role during replay");
         roleEnabledCheckBox.setSelected(true);
+        roleEnabledCheckBox.setToolTipText("Enable or disable this role during replay (boolean)");
         formPanel.add(roleEnabledCheckBox, gbc);
 
         // Custom Cookies
@@ -207,7 +210,7 @@ public class RolesPanel extends JPanel implements EngineListener {
         gbc.gridx = 1; gbc.weightx = 1.0;
         cookiesField = new JTextField(20);
         cookiesField.setPreferredSize(new Dimension(220, 28));
-        cookiesField.setToolTipText("e.g. session=user_token; auth=active");
+        cookiesField.setToolTipText("Cookie string to inject (format: key=value; key2=value2)");
         formPanel.add(cookiesField, gbc);
 
         // Custom Headers Area
@@ -217,7 +220,7 @@ public class RolesPanel extends JPanel implements EngineListener {
         headersArea = new JTextArea(5, 20);
         headersArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
         headersArea.setText("");
-        headersArea.setToolTipText("e.g. Authorization: Bearer <TOKEN>\nX-User-Id: 102");
+        headersArea.setToolTipText("Multiline HTTP headers to inject (format: Header-Name: value)");
         JScrollPane headersScroll = new JScrollPane(headersArea);
         headersScroll.setPreferredSize(new Dimension(220, 90));
         formPanel.add(headersScroll, gbc);
@@ -337,6 +340,7 @@ public class RolesPanel extends JPanel implements EngineListener {
         fgbc.gridy = 7;
         urlIncludeRegexField = new JTextField(initialConfig.getUrlIncludeRegex(), 25);
         urlIncludeRegexField.setPreferredSize(new Dimension(220, 28));
+        urlIncludeRegexField.setToolTipText("Regex pattern matching target URLs to process (e.g. ^https://.*)");
         settingsPanel.add(urlIncludeRegexField, fgbc);
 
         fgbc.gridy = 8;
@@ -344,6 +348,7 @@ public class RolesPanel extends JPanel implements EngineListener {
         fgbc.gridy = 9;
         urlExcludeRegexField = new JTextField(initialConfig.getUrlExcludeRegex(), 25);
         urlExcludeRegexField.setPreferredSize(new Dimension(220, 28));
+        urlExcludeRegexField.setToolTipText("Regex pattern matching URLs to skip (e.g. .*\\.(css|png|js)$)");
         settingsPanel.add(urlExcludeRegexField, fgbc);
 
         fgbc.gridy = 10; fgbc.anchor = GridBagConstraints.EAST; fgbc.fill = GridBagConstraints.NONE;
@@ -427,7 +432,7 @@ public class RolesPanel extends JPanel implements EngineListener {
                 clearRoleEditor();
             }
         } else {
-            JOptionPane.showMessageDialog(this, "Please select a role from the list to remove.", "Info", JOptionPane.INFORMATION_MESSAGE);
+            showMessageDialogSafe(this, "Please select a role from the list to remove.", "Info", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
@@ -445,14 +450,14 @@ public class RolesPanel extends JPanel implements EngineListener {
             }
             loadRoleToEditor(clone);
         } else {
-            JOptionPane.showMessageDialog(this, "Please select a role to duplicate.", "Info", JOptionPane.INFORMATION_MESSAGE);
+            showMessageDialogSafe(this, "Please select a role to duplicate.", "Info", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
     private void onSaveCurrentRole() {
         String name = roleNameField.getText().trim();
         if (name.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please enter a Role Name before saving.", "Validation Error", JOptionPane.WARNING_MESSAGE);
+            showMessageDialogSafe(this, "Please enter a Role Name before saving.", "Validation Error", JOptionPane.WARNING_MESSAGE);
             roleNameField.requestFocusInWindow();
             return;
         }
@@ -468,7 +473,7 @@ public class RolesPanel extends JPanel implements EngineListener {
             if (selectedRoleIndex >= 0 && selectedRoleIndex < rolesTable.getRowCount()) {
                 rolesTable.setRowSelectionInterval(selectedRoleIndex, selectedRoleIndex);
             }
-            JOptionPane.showMessageDialog(this, "Role '" + role.getName() + "' saved successfully!", "Saved", JOptionPane.INFORMATION_MESSAGE);
+            showMessageDialogSafe(this, "Role '" + role.getName() + "' saved successfully!", "Saved", JOptionPane.INFORMATION_MESSAGE);
         } else {
             // First time load or no role selected: create and add role directly from form
             UserRole newRole = new UserRole(name, headersArea.getText(), cookiesField.getText().trim());
@@ -480,7 +485,7 @@ public class RolesPanel extends JPanel implements EngineListener {
             if (newIndex >= 0 && newIndex < rolesTable.getRowCount()) {
                 rolesTable.setRowSelectionInterval(newIndex, newIndex);
             }
-            JOptionPane.showMessageDialog(this, "Role '" + newRole.getName() + "' created and saved successfully!", "Role Saved", JOptionPane.INFORMATION_MESSAGE);
+            showMessageDialogSafe(this, "Role '" + newRole.getName() + "' created and saved successfully!", "Role Saved", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
@@ -503,7 +508,13 @@ public class RolesPanel extends JPanel implements EngineListener {
         cfg.setUrlExcludeRegex(urlExcludeRegexField.getText());
 
         controller.setFilterConfig(cfg);
-        JOptionPane.showMessageDialog(this, "Settings and filters applied successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+        showMessageDialogSafe(this, "Settings and filters applied successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void showMessageDialogSafe(Component parent, Object message, String title, int messageType) {
+        if (!GraphicsEnvironment.isHeadless()) {
+            JOptionPane.showMessageDialog(parent, message, title, messageType);
+        }
     }
 
     // --- EngineListener Callbacks ---

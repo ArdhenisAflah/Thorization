@@ -187,7 +187,7 @@ public class PipelineStudioFase3Test {
         RequestStep s1 = (RequestStep) steps.get(0);
         assertEquals("POST", s1.getMethod());
         assertEquals(1, s1.getExtractions().size());
-        assertEquals("UPK_CODE", s1.getExtractions().get(0).getVariableName());
+        assertEquals("RESOURCE_ID", s1.getExtractions().get(0).getVariableName());
 
         // Step 2: Branch Check 200
         assertTrue(steps.get(1) instanceof ConditionBranch);
@@ -201,7 +201,7 @@ public class PipelineStudioFase3Test {
         assertTrue(steps.get(2) instanceof RequestStep);
         RequestStep s2 = (RequestStep) steps.get(2);
         assertEquals("GET", s2.getMethod());
-        assertTrue(s2.getUrlTemplate().contains("{{UPK_CODE}}"));
+        assertTrue(s2.getUrlTemplate().contains("{{RESOURCE_ID}}"));
 
         // Step 4: Assert BOLA Verdict
         assertTrue(steps.get(3) instanceof ConditionBranch);

@@ -237,7 +237,7 @@ public class PipelineStudioPanel extends JPanel implements EngineListener {
 
         addReqBtn.addActionListener(e -> {
             if (activePipeline != null) {
-                RequestStep step = new RequestStep("New Request Step", "GET", "https://example.com/api/data", "");
+                RequestStep step = new RequestStep("New Request Step", "GET", "", "");
                 activePipeline.addStep(step);
                 renderStepCards();
             }
@@ -266,22 +266,22 @@ public class PipelineStudioPanel extends JPanel implements EngineListener {
         String role1 = !currentRoles.isEmpty() ? currentRoles.get(0).getId() : "UNAUTHENTICATED";
         String role2 = currentRoles.size() > 1 ? currentRoles.get(1).getId() : "UNAUTHENTICATED";
 
-        RequestStep s1 = new RequestStep("Step 1: Create Record (Doctor A)", "POST", "https://selaras.kemkes.go.id/selaras_api/mobile/save_individu", role1);
-        s1.setBodyTemplate("[\n  {\n    \"id_unique\": \"ID20260824125737\",\n    \"kode_fasyankes\": \"P3674020202\",\n    \"nik\": \"ardaeded\"\n  }\n]");
-        ExtractionRule ext = new ExtractionRule("UPK_CODE", ExtractionSource.RESPONSE_BODY, ExtractionType.JSON_PATH, "$[0].id_unique");
-        ext.setDefaultValue("ID20260824125737");
+        RequestStep s1 = new RequestStep("Step 1: Setup Resource", "POST", "https://api.target.local/resource", role1);
+        s1.setBodyTemplate("{\n  \"item_id\": \"ITEM_001\"\n}");
+        ExtractionRule ext = new ExtractionRule("RESOURCE_ID", ExtractionSource.RESPONSE_BODY, ExtractionType.JSON_PATH, "$.item_id");
+        ext.setDefaultValue("ITEM_001");
         s1.addExtraction(ext);
 
         ConditionBranch branch1 = new ConditionBranch(
-                "Step 2: Check Creation Success",
+                "Step 2: Verify Setup Response",
                 ConditionBranch.ConditionType.STATUS_CODE_EQUALS,
                 "200",
                 ConditionBranch.BranchAction.CONTINUE,
                 ConditionBranch.BranchAction.STOP_PIPELINE
         );
-        branch1.setFailureNote("Record creation step failed - aborting pipeline");
+        branch1.setFailureNote("Resource setup step failed - aborting pipeline");
 
-        RequestStep s2 = new RequestStep("Step 3: Query Data (Attacker B)", "GET", "https://selaras.kemkes.go.id/selaras_api/mobile/list_biodata?upk={{UPK_CODE}}", role2);
+        RequestStep s2 = new RequestStep("Step 3: Replay with Attacker Context", "GET", "https://api.target.local/resource/{{RESOURCE_ID}}", role2);
 
         ConditionBranch branch2 = new ConditionBranch(
                 "Step 4: Assert BOLA Vulnerability",

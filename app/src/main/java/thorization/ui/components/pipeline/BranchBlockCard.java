@@ -55,7 +55,7 @@ public class BranchBlockCard extends JPanel {
         nameField = new JTextField(branch.getName(), 18);
         nameField.setFont(nameField.getFont().deriveFont(Font.BOLD, 12f));
         nameField.setPreferredSize(new Dimension(200, 26));
-        nameField.setToolTipText("Descriptive assertion or branch name");
+        nameField.setToolTipText("Condition branch label (string)");
 
         JPanel titleLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         titleLeft.setOpaque(false);
@@ -143,7 +143,7 @@ public class BranchBlockCard extends JPanel {
         gbc.gridx = 1; gbc.gridwidth = 3; gbc.weightx = 1.0;
         failureNoteField = new JTextField(branch.getFailureNote());
         failureNoteField.setPreferredSize(new Dimension(300, 26));
-        failureNoteField.setToolTipText("Optional failure note logged when condition causes failure/stop");
+        failureNoteField.setToolTipText("Failure note logged when condition triggers stop (string)");
         fieldsPanel.add(failureNoteField, gbc);
 
         add(fieldsPanel, BorderLayout.CENTER);
@@ -154,16 +154,16 @@ public class BranchBlockCard extends JPanel {
         if (ct == null) return;
         switch (ct) {
             case STATUS_CODE_EQUALS:
-                expectedValueField.setToolTipText("Expected HTTP status code, e.g. 200, 201, 403");
+                expectedValueField.setToolTipText("Expected HTTP status code integer (e.g. 200, 403)");
                 break;
             case BODY_CONTAINS:
-                expectedValueField.setToolTipText("Text or variable to find in response body, e.g. success or {{VAR}}");
+                expectedValueField.setToolTipText("Substring to search within response body (string)");
                 break;
             case BODY_MATCHES_REGEX:
-                expectedValueField.setToolTipText("Regex pattern to test response body, e.g. (token|auth)=[a-zA-Z0-9]+");
+                expectedValueField.setToolTipText("Regex pattern to match against response body (regex string)");
                 break;
             case VARIABLE_NOT_EMPTY:
-                expectedValueField.setToolTipText("Variable name to verify is non-empty, e.g. USER_ID or {{USER_ID}}");
+                expectedValueField.setToolTipText("Variable name to verify is non-empty (string)");
                 break;
         }
     }

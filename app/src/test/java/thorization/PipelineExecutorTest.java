@@ -63,7 +63,7 @@ public class PipelineExecutorTest {
 
     @Test
     void testRegexExtractor() {
-        String url = "https://selaras.kemkes.go.id/selaras_api/mobile/list_biodata?upk=P3578110203&page=1";
+        String url = "https://api.target.local/resource/list_data?upk=P3578110203&page=1";
         String extracted = JsonPathExtractor.extractRegex(url, "[?&]upk=([^&#]+)");
         assertEquals("P3578110203", extracted);
 
@@ -91,7 +91,7 @@ public class PipelineExecutorTest {
     void testPipelineExecutionFlow() {
         Pipeline pipeline = new Pipeline("BOLA Cross-Role Data Verification", "Tests if User 2 can read records created by User 1");
 
-        RequestStep s1 = new RequestStep("Step 1: Create Record", "POST", "https://selaras.kemkes.go.id/save", "ROLE_1");
+        RequestStep s1 = new RequestStep("Step 1: Create Record", "POST", "https://api.target.local/save", "ROLE_1");
         s1.setBodyTemplate("[\n  {\n    \"id_unique\": \"ID20260824125737\",\n    \"kode_fasyankes\": \"P3674020202\"\n  }\n]");
 
         ExtractionRule r1 = new ExtractionRule("PATIENT_ID", ExtractionSource.REQUEST_BODY, ExtractionType.JSON_PATH, "$[0].id_unique");
@@ -107,7 +107,7 @@ public class PipelineExecutorTest {
                 ConditionBranch.BranchAction.STOP_PIPELINE
         );
 
-        RequestStep s2 = new RequestStep("Step 3: Query Data (Attacker)", "GET", "https://selaras.kemkes.go.id/list?upk={{UPK_CODE}}", "ROLE_2");
+        RequestStep s2 = new RequestStep("Step 3: Query Data (Attacker)", "GET", "https://api.target.local/list?upk={{UPK_CODE}}", "ROLE_2");
 
         pipeline.addStep(s1);
         pipeline.addStep(branch);

@@ -147,7 +147,7 @@ public class TablePanel extends JPanel implements EngineListener {
         rightPanel.add(new JLabel("Search:"));
         searchFilterField = new JTextField(12);
         searchFilterField.setPreferredSize(new Dimension(120, 26));
-        searchFilterField.setToolTipText("Filter requests by URL, method, status, etc.");
+        searchFilterField.setToolTipText("Filter term matching URL, method, status, or tool (string)");
         searchFilterField.getDocument().addDocumentListener(new DocumentListener() {
             @Override public void insertUpdate(DocumentEvent e) { applyFilter(); }
             @Override public void removeUpdate(DocumentEvent e) { applyFilter(); }
