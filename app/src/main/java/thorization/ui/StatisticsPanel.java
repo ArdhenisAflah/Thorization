@@ -66,7 +66,10 @@ public class StatisticsPanel extends JPanel implements EngineListener {
         );
 
         chartPanel = new ChartPanel(chart);
-        chartPanel.setBorder(BorderFactory.createTitledBorder("Real-Time Verdict Analytics"));
+        chartPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder("Real-Time Verdict Analytics"),
+                BorderFactory.createEmptyBorder(6, 6, 6, 6)
+        ));
 
         applyTheme();
 

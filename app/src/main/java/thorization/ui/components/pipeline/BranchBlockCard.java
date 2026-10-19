@@ -1,6 +1,7 @@
 package thorization.ui.components.pipeline;
 
 import thorization.model.pipeline.ConditionBranch;
+import thorization.util.UiUtils;
 
 import javax.swing.*;
 import java.awt.*;
@@ -33,30 +34,33 @@ public class BranchBlockCard extends JPanel {
         this.onRemove = onRemove;
 
         setLayout(new BorderLayout(5, 5));
+        Color borderColor = new Color(230, 160, 0);
         setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(251, 188, 4), 2, true),
-                BorderFactory.createEmptyBorder(8, 10, 8, 10)
+                BorderFactory.createLineBorder(borderColor, 1, true),
+                BorderFactory.createEmptyBorder(6, 8, 6, 8)
         ));
-        setBackground(new Color(255, 253, 245));
+        setBackground(UiUtils.getCardBackground(false));
 
         // --- Header Bar ---
         JPanel headerPanel = new JPanel(new BorderLayout(5, 0));
         headerPanel.setOpaque(false);
 
-        JLabel typeBadge = new JLabel(" 🟨 LOGIC BRANCH (IF / ELSE) ");
-        typeBadge.setFont(typeBadge.getFont().deriveFont(Font.BOLD, 12f));
+        JLabel typeBadge = new JLabel(" IF / ELSE ");
+        typeBadge.setFont(typeBadge.getFont().deriveFont(Font.BOLD, 11f));
         typeBadge.setOpaque(true);
-        typeBadge.setBackground(new Color(230, 160, 0));
+        typeBadge.setBackground(borderColor);
         typeBadge.setForeground(Color.WHITE);
         typeBadge.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
 
         nameField = new JTextField(branch.getName(), 18);
         nameField.setFont(nameField.getFont().deriveFont(Font.BOLD, 12f));
+        nameField.setPreferredSize(new Dimension(200, 26));
+        nameField.setToolTipText("Descriptive assertion or branch name");
 
         JPanel titleLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         titleLeft.setOpaque(false);
         titleLeft.add(typeBadge);
-        titleLeft.add(new JLabel("Branch Name:"));
+        titleLeft.add(new JLabel("Branch:"));
         titleLeft.add(nameField);
 
         JPanel controlsRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
@@ -64,8 +68,12 @@ public class BranchBlockCard extends JPanel {
 
         JButton upBtn = new JButton("▲");
         JButton downBtn = new JButton("▼");
-        JButton removeBtn = new JButton("✖");
+        JButton removeBtn = new JButton("✕");
         removeBtn.setForeground(new Color(220, 53, 69));
+
+        upBtn.setToolTipText("Move Step Up");
+        downBtn.setToolTipText("Move Step Down");
+        removeBtn.setToolTipText("Delete Step");
 
         upBtn.addActionListener(e -> onMoveUp.accept(this));
         downBtn.addActionListener(e -> onMoveDown.accept(this));
@@ -84,51 +92,80 @@ public class BranchBlockCard extends JPanel {
         fieldsPanel.setOpaque(false);
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(4, 4, 4, 4);
+        gbc.insets = new Insets(3, 4, 3, 4);
 
         // Row 1: Condition Statement (IF <type> == <expected>)
         gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.0;
-        fieldsPanel.add(new JLabel("Condition: IF"), gbc);
+        fieldsPanel.add(new JLabel("IF:"), gbc);
 
         gbc.gridx = 1; gbc.weightx = 0.4;
         conditionTypeCombo = new JComboBox<>(ConditionBranch.ConditionType.values());
+        conditionTypeCombo.setPreferredSize(new Dimension(190, 26));
         conditionTypeCombo.setSelectedItem(branch.getConditionType());
+        conditionTypeCombo.setToolTipText("Select condition criteria to evaluate");
         fieldsPanel.add(conditionTypeCombo, gbc);
 
         gbc.gridx = 2; gbc.weightx = 0.0;
-        fieldsPanel.add(new JLabel("matches value:"), gbc);
+        fieldsPanel.add(new JLabel("matches:"), gbc);
 
         gbc.gridx = 3; gbc.weightx = 0.6;
         expectedValueField = new JTextField(branch.getExpectedValue());
+        expectedValueField.setPreferredSize(new Dimension(140, 26));
+        conditionTypeCombo.addActionListener(e -> updateExpectedHint());
+        updateExpectedHint();
         fieldsPanel.add(expectedValueField, gbc);
 
-        // Row 2: THEN Action (On True)
-        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0.0;
-        fieldsPanel.add(new JLabel("THEN (True):"), gbc);
+        // Row 2: THEN / ELSE Actions side by side
+        gbc.gridx = 0; gbc.gridy = 1; gbc.gridwidth = 1; gbc.weightx = 0.0;
+        fieldsPanel.add(new JLabel("THEN:"), gbc);
 
-        gbc.gridx = 1; gbc.gridwidth = 3; gbc.weightx = 1.0;
+        gbc.gridx = 1; gbc.weightx = 0.5;
         onTrueCombo = new JComboBox<>(ConditionBranch.BranchAction.values());
+        onTrueCombo.setPreferredSize(new Dimension(190, 26));
         onTrueCombo.setSelectedItem(branch.getOnTrueAction());
+        onTrueCombo.setToolTipText("Action to take if condition evaluates to TRUE");
         fieldsPanel.add(onTrueCombo, gbc);
 
-        // Row 3: ELSE Action (On False)
-        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 1; gbc.weightx = 0.0;
-        fieldsPanel.add(new JLabel("ELSE (False):"), gbc);
+        gbc.gridx = 2; gbc.weightx = 0.0;
+        fieldsPanel.add(new JLabel("ELSE:"), gbc);
 
-        gbc.gridx = 1; gbc.gridwidth = 3; gbc.weightx = 1.0;
+        gbc.gridx = 3; gbc.weightx = 0.5;
         onFalseCombo = new JComboBox<>(ConditionBranch.BranchAction.values());
+        onFalseCombo.setPreferredSize(new Dimension(190, 26));
         onFalseCombo.setSelectedItem(branch.getOnFalseAction());
+        onFalseCombo.setToolTipText("Action to take if condition evaluates to FALSE");
         fieldsPanel.add(onFalseCombo, gbc);
 
-        // Row 4: Note / Failure Explanation
-        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 1; gbc.weightx = 0.0;
-        fieldsPanel.add(new JLabel("Failure Note:"), gbc);
+        // Row 3: Note / Failure Explanation
+        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 1; gbc.weightx = 0.0;
+        fieldsPanel.add(new JLabel("Note:"), gbc);
 
         gbc.gridx = 1; gbc.gridwidth = 3; gbc.weightx = 1.0;
         failureNoteField = new JTextField(branch.getFailureNote());
+        failureNoteField.setPreferredSize(new Dimension(300, 26));
+        failureNoteField.setToolTipText("Optional failure note logged when condition causes failure/stop");
         fieldsPanel.add(failureNoteField, gbc);
 
         add(fieldsPanel, BorderLayout.CENTER);
+    }
+
+    private void updateExpectedHint() {
+        ConditionBranch.ConditionType ct = (ConditionBranch.ConditionType) conditionTypeCombo.getSelectedItem();
+        if (ct == null) return;
+        switch (ct) {
+            case STATUS_CODE_EQUALS:
+                expectedValueField.setToolTipText("Expected HTTP status code, e.g. 200, 201, 403");
+                break;
+            case BODY_CONTAINS:
+                expectedValueField.setToolTipText("Text or variable to find in response body, e.g. success or {{VAR}}");
+                break;
+            case BODY_MATCHES_REGEX:
+                expectedValueField.setToolTipText("Regex pattern to test response body, e.g. (token|auth)=[a-zA-Z0-9]+");
+                break;
+            case VARIABLE_NOT_EMPTY:
+                expectedValueField.setToolTipText("Variable name to verify is non-empty, e.g. USER_ID or {{USER_ID}}");
+                break;
+        }
     }
 
     public ConditionBranch getBranchData() {
@@ -139,6 +176,11 @@ public class BranchBlockCard extends JPanel {
         branch.setOnFalseAction((ConditionBranch.BranchAction) onFalseCombo.getSelectedItem());
         branch.setFailureNote(failureNoteField.getText().trim());
         return branch;
+    }
+
+    @Override
+    public Dimension getMaximumSize() {
+        return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
     }
 }
 

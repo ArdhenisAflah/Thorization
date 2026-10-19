@@ -9,6 +9,8 @@ import thorization.model.UserRole;
 import thorization.model.pipeline.Pipeline;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -25,6 +27,7 @@ import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
@@ -36,7 +39,7 @@ import java.util.Set;
 
 /**
  * Tab 1: Panel for managing user roles, custom header injections, cookies,
- * role execution priority ordering, and Safe Drop Control settings (USP 1).
+ * role execution priority ordering, and Safe Drop Control settings.
  */
 public class RolesPanel extends JPanel implements EngineListener {
 
@@ -50,7 +53,7 @@ public class RolesPanel extends JPanel implements EngineListener {
     private JTextArea headersArea;
     private JTextField cookiesField;
 
-    // Safe Request Interception (USP 1) Controls
+    // Safe Request Interception Controls
     private JComboBox<InterceptionMode> interceptionModeCombo;
     private JRadioButton dropStateChangingOnlyRadio;
     private JRadioButton dropAllRequestsRadio;
@@ -77,7 +80,8 @@ public class RolesPanel extends JPanel implements EngineListener {
         setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         JSplitPane mainSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, createRolesListPanel(), createConfigPanel());
-        mainSplit.setResizeWeight(0.4);
+        mainSplit.setResizeWeight(0.32);
+        mainSplit.setDividerLocation(340);
 
         add(mainSplit, BorderLayout.CENTER);
         refreshRolesTable();
@@ -85,7 +89,10 @@ public class RolesPanel extends JPanel implements EngineListener {
 
     private JPanel createRolesListPanel() {
         JPanel panel = new JPanel(new BorderLayout(5, 5));
-        panel.setBorder(BorderFactory.createTitledBorder("Configured Roles (Priority & Execution Sequence)"));
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder("Configured Roles"),
+                BorderFactory.createEmptyBorder(6, 6, 6, 6)
+        ));
 
         tableModel = new DefaultTableModel(new String[]{"Priority", "Name", "Status", "Headers"}, 0) {
             @Override
@@ -151,12 +158,17 @@ public class RolesPanel extends JPanel implements EngineListener {
         return panel;
     }
 
-    private JPanel createConfigPanel() {
-        JPanel container = new JPanel(new BorderLayout(5, 5));
+    private JScrollPane createConfigPanel() {
+        JPanel container = new JPanel();
+        container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
+        container.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 4));
 
         // 1. Role Details Form
         JPanel formPanel = new JPanel(new GridBagLayout());
-        formPanel.setBorder(BorderFactory.createTitledBorder("Role Details & Injected Credentials"));
+        formPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder("Role Details & Injected Credentials"),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        ));
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(4, 4, 4, 4);
@@ -164,35 +176,39 @@ public class RolesPanel extends JPanel implements EngineListener {
         gbc.anchor = GridBagConstraints.WEST;
 
         // Role Name
-        gbc.gridx = 0; gbc.gridy = 0;
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0;
         formPanel.add(new JLabel("Role Name:"), gbc);
         gbc.gridx = 1; gbc.weightx = 1.0;
         roleNameField = new JTextField(20);
+        roleNameField.setPreferredSize(new Dimension(220, 28));
         formPanel.add(roleNameField, gbc);
 
         // Role Enabled
         gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0;
         formPanel.add(new JLabel("Active for Audit:"), gbc);
-        gbc.gridx = 1;
+        gbc.gridx = 1; gbc.weightx = 1.0;
         roleEnabledCheckBox = new JCheckBox("Enable this role during replay");
         roleEnabledCheckBox.setSelected(true);
         formPanel.add(roleEnabledCheckBox, gbc);
 
         // Custom Cookies
-        gbc.gridx = 0; gbc.gridy = 2;
+        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0;
         formPanel.add(new JLabel("Cookie Header:"), gbc);
-        gbc.gridx = 1;
+        gbc.gridx = 1; gbc.weightx = 1.0;
         cookiesField = new JTextField("session=user_b_token; auth=active", 20);
+        cookiesField.setPreferredSize(new Dimension(220, 28));
         formPanel.add(cookiesField, gbc);
 
         // Custom Headers Area
-        gbc.gridx = 0; gbc.gridy = 3; gbc.anchor = GridBagConstraints.NORTHWEST;
+        gbc.gridx = 0; gbc.gridy = 3; gbc.weightx = 0; gbc.anchor = GridBagConstraints.NORTHWEST;
         formPanel.add(new JLabel("Custom Headers:"), gbc);
-        gbc.gridx = 1; gbc.weighty = 1.0; gbc.fill = GridBagConstraints.BOTH;
+        gbc.gridx = 1; gbc.weightx = 1.0; gbc.weighty = 1.0; gbc.fill = GridBagConstraints.BOTH;
         headersArea = new JTextArea(5, 20);
         headersArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
         headersArea.setText("Authorization: Bearer token_for_user_b\nX-User-Id: 102\nX-Role: user");
-        formPanel.add(new JScrollPane(headersArea), gbc);
+        JScrollPane headersScroll = new JScrollPane(headersArea);
+        headersScroll.setPreferredSize(new Dimension(220, 90));
+        formPanel.add(headersScroll, gbc);
 
         // Save Role Button
         gbc.gridx = 1; gbc.gridy = 4; gbc.weighty = 0; gbc.fill = GridBagConstraints.NONE; gbc.anchor = GridBagConstraints.EAST;
@@ -200,9 +216,12 @@ public class RolesPanel extends JPanel implements EngineListener {
         saveRoleBtn.addActionListener(e -> onSaveCurrentRole());
         formPanel.add(saveRoleBtn, gbc);
 
-        // 2. Settings Panel (USP 1 Safe Interception + Filters)
+        // 2. Settings Panel (Safe Interception + Filters)
         JPanel settingsPanel = new JPanel(new GridBagLayout());
-        settingsPanel.setBorder(BorderFactory.createTitledBorder("Safe Request Interception & Drop Control (USP 1)"));
+        settingsPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder("Safe Request Interception & Drop Control"),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        ));
 
         GridBagConstraints fgbc = new GridBagConstraints();
         fgbc.insets = new Insets(3, 4, 3, 4);
@@ -212,10 +231,11 @@ public class RolesPanel extends JPanel implements EngineListener {
         FilterConfig initialConfig = controller.getFilterConfig();
 
         // Mode Dropdown
-        fgbc.gridx = 0; fgbc.gridy = 0;
+        fgbc.gridx = 0; fgbc.gridy = 0; fgbc.weightx = 0; fgbc.gridwidth = 1;
         settingsPanel.add(new JLabel("Interception Mode:"), fgbc);
         fgbc.gridx = 1; fgbc.weightx = 1.0;
         interceptionModeCombo = new JComboBox<>(InterceptionMode.values());
+        interceptionModeCombo.setPreferredSize(new Dimension(220, 28));
         interceptionModeCombo.setSelectedItem(initialConfig.getInterceptionMode());
         interceptionModeCombo.addActionListener(e -> {
             if (!isUpdatingFromModel) {
@@ -227,7 +247,7 @@ public class RolesPanel extends JPanel implements EngineListener {
         // Drop Scope Radio Buttons
         fgbc.gridx = 0; fgbc.gridy = 1; fgbc.weightx = 0;
         settingsPanel.add(new JLabel("Drop Scope:"), fgbc);
-        fgbc.gridx = 1;
+        fgbc.gridx = 1; fgbc.weightx = 1.0;
         JPanel scopeRadioPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         dropStateChangingOnlyRadio = new JRadioButton("State-Changing Only (POST/PUT/DELETE/PATCH)", !initialConfig.isDropAllRequests());
         dropAllRequestsRadio = new JRadioButton("Drop ALL Requests (Aggressive: including GET)", initialConfig.isDropAllRequests());
@@ -253,7 +273,7 @@ public class RolesPanel extends JPanel implements EngineListener {
         // State-changing methods checkboxes
         fgbc.gridx = 0; fgbc.gridy = 2; fgbc.weightx = 0;
         settingsPanel.add(new JLabel("State-Changing Methods:"), fgbc);
-        fgbc.gridx = 1;
+        fgbc.gridx = 1; fgbc.weightx = 1.0;
         JPanel methodsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         Set<String> activeMethods = initialConfig.getStateChangingMethods();
         postMethodCheck = new JCheckBox("POST", activeMethods.contains("POST"));
@@ -293,7 +313,7 @@ public class RolesPanel extends JPanel implements EngineListener {
             }
         });
 
-        fgbc.gridx = 0; fgbc.gridy = 3; fgbc.gridwidth = 2;
+        fgbc.gridx = 0; fgbc.gridy = 3; fgbc.gridwidth = 2; fgbc.weightx = 1.0;
         settingsPanel.add(onlyInScopeCheckBox, fgbc);
         fgbc.gridy = 4;
         settingsPanel.add(ignoreStaticCheckBox, fgbc);
@@ -304,12 +324,14 @@ public class RolesPanel extends JPanel implements EngineListener {
         settingsPanel.add(new JLabel("URL Include Regex (optional):"), fgbc);
         fgbc.gridy = 7;
         urlIncludeRegexField = new JTextField(initialConfig.getUrlIncludeRegex(), 25);
+        urlIncludeRegexField.setPreferredSize(new Dimension(220, 28));
         settingsPanel.add(urlIncludeRegexField, fgbc);
 
         fgbc.gridy = 8;
         settingsPanel.add(new JLabel("URL Exclude Regex (optional):"), fgbc);
         fgbc.gridy = 9;
         urlExcludeRegexField = new JTextField(initialConfig.getUrlExcludeRegex(), 25);
+        urlExcludeRegexField.setPreferredSize(new Dimension(220, 28));
         settingsPanel.add(urlExcludeRegexField, fgbc);
 
         fgbc.gridy = 10; fgbc.anchor = GridBagConstraints.EAST; fgbc.fill = GridBagConstraints.NONE;
@@ -317,9 +339,14 @@ public class RolesPanel extends JPanel implements EngineListener {
         saveFilterBtn.addActionListener(e -> onApplyFilters());
         settingsPanel.add(saveFilterBtn, fgbc);
 
-        container.add(formPanel, BorderLayout.CENTER);
-        container.add(settingsPanel, BorderLayout.SOUTH);
-        return container;
+        container.add(formPanel);
+        container.add(Box.createVerticalStrut(10));
+        container.add(settingsPanel);
+
+        JScrollPane scrollPane = new JScrollPane(container);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        return scrollPane;
     }
 
     private void autoSyncMethods() {

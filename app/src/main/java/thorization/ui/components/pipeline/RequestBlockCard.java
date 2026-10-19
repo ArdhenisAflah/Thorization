@@ -5,9 +5,9 @@ import thorization.model.pipeline.ExtractionRule;
 import thorization.model.pipeline.ExtractionSource;
 import thorization.model.pipeline.ExtractionType;
 import thorization.model.pipeline.RequestStep;
+import thorization.util.UiUtils;
 
 import javax.swing.*;
-import javax.swing.border.TitledBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.List;
@@ -32,6 +32,7 @@ public class RequestBlockCard extends JPanel {
     private final JTextArea bodyArea;
     private final JCheckBox teardownCheck;
     private final DefaultTableModel extractionTableModel;
+    private final JTable extractionTable;
 
     public static class RoleItem {
         public final String id;
@@ -50,30 +51,33 @@ public class RequestBlockCard extends JPanel {
         this.onRemove = onRemove;
 
         setLayout(new BorderLayout(5, 5));
+        Color borderColor = new Color(66, 133, 244);
         setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(66, 133, 244), 2, true),
-                BorderFactory.createEmptyBorder(8, 10, 8, 10)
+                BorderFactory.createLineBorder(borderColor, 1, true),
+                BorderFactory.createEmptyBorder(6, 8, 6, 8)
         ));
-        setBackground(new Color(248, 250, 254));
+        setBackground(UiUtils.getCardBackground(true));
 
         // --- Header Bar ---
         JPanel headerPanel = new JPanel(new BorderLayout(5, 0));
         headerPanel.setOpaque(false);
 
-        JLabel typeBadge = new JLabel(" 🟦 HTTP REQUEST STEP ");
-        typeBadge.setFont(typeBadge.getFont().deriveFont(Font.BOLD, 12f));
+        JLabel typeBadge = new JLabel(" HTTP STEP ");
+        typeBadge.setFont(typeBadge.getFont().deriveFont(Font.BOLD, 11f));
         typeBadge.setOpaque(true);
-        typeBadge.setBackground(new Color(66, 133, 244));
+        typeBadge.setBackground(borderColor);
         typeBadge.setForeground(Color.WHITE);
         typeBadge.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
 
         nameField = new JTextField(step.getName(), 18);
         nameField.setFont(nameField.getFont().deriveFont(Font.BOLD, 12f));
+        nameField.setPreferredSize(new Dimension(200, 26));
+        nameField.setToolTipText("Descriptive step name (e.g. Create Order, Read Profile)");
 
         JPanel titleLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         titleLeft.setOpaque(false);
         titleLeft.add(typeBadge);
-        titleLeft.add(new JLabel("Step Name:"));
+        titleLeft.add(new JLabel("Step:"));
         titleLeft.add(nameField);
 
         JPanel controlsRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
@@ -81,7 +85,7 @@ public class RequestBlockCard extends JPanel {
 
         JButton upBtn = new JButton("▲");
         JButton downBtn = new JButton("▼");
-        JButton removeBtn = new JButton("✖");
+        JButton removeBtn = new JButton("✕");
         removeBtn.setForeground(new Color(220, 53, 69));
 
         upBtn.setToolTipText("Move Step Up");
@@ -105,53 +109,76 @@ public class RequestBlockCard extends JPanel {
         fieldsPanel.setOpaque(false);
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(4, 4, 4, 4);
+        gbc.insets = new Insets(3, 4, 3, 4);
 
         // Row 1: Method + URL + Role Selector
         gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.0;
         methodCombo = new JComboBox<>(new String[]{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"});
+        methodCombo.setPreferredSize(new Dimension(85, 26));
         methodCombo.setSelectedItem(step.getMethod());
+        methodCombo.setToolTipText("HTTP Request Method");
         fieldsPanel.add(methodCombo, gbc);
 
         gbc.gridx = 1; gbc.weightx = 1.0;
         urlField = new JTextField(step.getUrlTemplate());
+        urlField.setPreferredSize(new Dimension(260, 26));
+        urlField.setToolTipText("Request URL (supports placeholders like {{VAR_ID}})");
         fieldsPanel.add(urlField, gbc);
 
         gbc.gridx = 2; gbc.weightx = 0.0;
-        fieldsPanel.add(new JLabel("Execute as:"), gbc);
+        fieldsPanel.add(new JLabel("Role:"), gbc);
 
         gbc.gridx = 3; gbc.weightx = 0.0;
         roleCombo = new JComboBox<>();
+        roleCombo.setPreferredSize(new Dimension(175, 26));
+        roleCombo.setToolTipText("Role credential context to apply to this request");
         updateRolesList(availableRoles);
         fieldsPanel.add(roleCombo, gbc);
 
-        // Row 2: Headers & Body Tabs
-        gbc.gridx = 0; gbc.gridy = 1; gbc.gridwidth = 4; gbc.weightx = 1.0; gbc.weighty = 0.5;
+        // Row 2: Teardown checkbox
+        gbc.gridx = 0; gbc.gridy = 1; gbc.gridwidth = 4; gbc.weightx = 1.0;
+        JPanel teardownPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
+        teardownPanel.setOpaque(false);
+        teardownCheck = new JCheckBox("Teardown Step (Cleanup request executed at end)", step.isTeardown());
+        teardownCheck.setOpaque(false);
+        teardownPanel.add(teardownCheck);
+        fieldsPanel.add(teardownPanel, gbc);
+
+        // Row 3: Tabs (Headers, Body, Extractions)
+        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 4; gbc.weightx = 1.0; gbc.weighty = 1.0;
         gbc.fill = GridBagConstraints.BOTH;
 
         JTabbedPane payloadTabs = new JTabbedPane();
+
         headersArea = new JTextArea(step.getHeadersTemplate(), 3, 30);
         headersArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-        payloadTabs.addTab("Custom Headers (Optional)", new JScrollPane(headersArea));
+        headersArea.setToolTipText("Custom request headers template (supports {{VAR_ID}})");
+        JScrollPane headersScroll = new JScrollPane(headersArea);
+        headersScroll.setPreferredSize(new Dimension(300, 90));
+        payloadTabs.addTab("Headers (supports {{VAR}})", headersScroll);
 
         bodyArea = new JTextArea(step.getBodyTemplate(), 4, 30);
         bodyArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-        payloadTabs.addTab("Request Body Template (supports {{VAR}})", new JScrollPane(bodyArea));
+        bodyArea.setToolTipText("Body payload template (supports {{VAR_ID}})");
+        JScrollPane bodyScroll = new JScrollPane(bodyArea);
+        bodyScroll.setPreferredSize(new Dimension(300, 90));
+        payloadTabs.addTab("Body Template (supports {{VAR}})", bodyScroll);
 
-        fieldsPanel.add(payloadTabs, gbc);
-
-        // Row 3: Embedded Extractions Table
-        gbc.gridy = 2; gbc.weighty = 0.5;
+        // Tab 3: Extraction Table
         JPanel extractionPanel = new JPanel(new BorderLayout(4, 4));
         extractionPanel.setOpaque(false);
-        extractionPanel.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createLineBorder(new Color(200, 200, 200)),
-                "Dynamic Variable Extraction Rules (Auto-stored to {{VAR_NAME}})",
-                TitledBorder.LEFT, TitledBorder.TOP
-        ));
+        extractionPanel.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
 
         String[] extractionCols = {"Var Name", "Source", "Type", "Expression / JSONPath", "Default"};
-        extractionTableModel = new DefaultTableModel(extractionCols, 0);
+        extractionTableModel = new DefaultTableModel(extractionCols, 0) {
+            @Override
+            public Class<?> getColumnClass(int columnIndex) {
+                if (columnIndex == 1) return ExtractionSource.class;
+                if (columnIndex == 2) return ExtractionType.class;
+                return String.class;
+            }
+        };
+
         if (step.getExtractions() != null) {
             for (ExtractionRule r : step.getExtractions()) {
                 extractionTableModel.addRow(new Object[]{
@@ -164,13 +191,83 @@ public class RequestBlockCard extends JPanel {
             }
         }
 
-        JTable extractionTable = new JTable(extractionTableModel);
-        extractionPanel.add(new JScrollPane(extractionTable), BorderLayout.CENTER);
+        extractionTable = new JTable(extractionTableModel);
+        extractionTable.setRowHeight(24);
+
+        // Column 0: Var Name
+        extractionTable.getColumnModel().getColumn(0).setPreferredWidth(100);
+
+        // Column 1: Source Dropdown Editor & Renderer
+        JComboBox<ExtractionSource> sourceCombo = new JComboBox<>(ExtractionSource.values());
+        sourceCombo.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof ExtractionSource) {
+                    setText(((ExtractionSource) value).getDisplayName());
+                }
+                return this;
+            }
+        });
+        extractionTable.getColumnModel().getColumn(1).setCellEditor(new DefaultCellEditor(sourceCombo));
+        extractionTable.getColumnModel().getColumn(1).setCellRenderer(new javax.swing.table.DefaultTableCellRenderer() {
+            @Override
+            protected void setValue(Object value) {
+                if (value instanceof ExtractionSource) {
+                    setText(((ExtractionSource) value).getDisplayName());
+                } else if (value != null) {
+                    setText(value.toString());
+                } else {
+                    setText("");
+                }
+            }
+        });
+        extractionTable.getColumnModel().getColumn(1).setPreferredWidth(130);
+
+        // Column 2: Type Dropdown Editor & Renderer
+        JComboBox<ExtractionType> typeCombo = new JComboBox<>(ExtractionType.values());
+        typeCombo.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof ExtractionType) {
+                    setText(((ExtractionType) value).getDisplayName());
+                }
+                return this;
+            }
+        });
+        extractionTable.getColumnModel().getColumn(2).setCellEditor(new DefaultCellEditor(typeCombo));
+        extractionTable.getColumnModel().getColumn(2).setCellRenderer(new javax.swing.table.DefaultTableCellRenderer() {
+            @Override
+            protected void setValue(Object value) {
+                if (value instanceof ExtractionType) {
+                    setText(((ExtractionType) value).getDisplayName());
+                } else if (value != null) {
+                    setText(value.toString());
+                } else {
+                    setText("");
+                }
+            }
+        });
+        extractionTable.getColumnModel().getColumn(2).setPreferredWidth(140);
+
+        // Column 3: Expression
+        extractionTable.getColumnModel().getColumn(3).setPreferredWidth(210);
+
+        // Column 4: Default
+        extractionTable.getColumnModel().getColumn(4).setPreferredWidth(80);
+
+        JScrollPane extractScroll = new JScrollPane(extractionTable);
+        extractScroll.setPreferredSize(new Dimension(300, 75));
+        extractionPanel.add(extractScroll, BorderLayout.CENTER);
+
+        JPanel extractionFooter = new JPanel(new BorderLayout(6, 0));
+        extractionFooter.setOpaque(false);
 
         JPanel extractionControls = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         extractionControls.setOpaque(false);
-        JButton addExtractBtn = new JButton("+ Add Variable Rule");
-        JButton removeExtractBtn = new JButton("Remove Rule");
+        JButton addExtractBtn = new JButton("+ Add Rule");
+        JButton removeExtractBtn = new JButton("Remove");
 
         addExtractBtn.addActionListener(e -> {
             extractionTableModel.addRow(new Object[]{
@@ -183,17 +280,20 @@ public class RequestBlockCard extends JPanel {
             if (row >= 0) extractionTableModel.removeRow(row);
         });
 
-        teardownCheck = new JCheckBox("Is Teardown / Cleanup Request", step.isTeardown());
-        teardownCheck.setOpaque(false);
-
         extractionControls.add(addExtractBtn);
         extractionControls.add(removeExtractBtn);
-        extractionControls.add(Box.createHorizontalStrut(15));
-        extractionControls.add(teardownCheck);
 
-        extractionPanel.add(extractionControls, BorderLayout.SOUTH);
-        fieldsPanel.add(extractionPanel, gbc);
+        JLabel hintLabel = new JLabel("💡 Header Regex: Use 'Header: regex' (e.g. Set-Cookie: token=([a-zA-Z0-9]+)) or JSONPath (e.g. $.id)");
+        hintLabel.setFont(hintLabel.getFont().deriveFont(Font.ITALIC, 11f));
+        hintLabel.setForeground(UIManager.getColor("Label.disabledForeground") != null ? UIManager.getColor("Label.disabledForeground") : Color.GRAY);
 
+        extractionFooter.add(extractionControls, BorderLayout.WEST);
+        extractionFooter.add(hintLabel, BorderLayout.CENTER);
+
+        extractionPanel.add(extractionFooter, BorderLayout.SOUTH);
+        payloadTabs.addTab("Dynamic Extractions", extractionPanel);
+
+        fieldsPanel.add(payloadTabs, gbc);
         add(fieldsPanel, BorderLayout.CENTER);
     }
 
@@ -212,6 +312,10 @@ public class RequestBlockCard extends JPanel {
     }
 
     public RequestStep getStepData() {
+        if (extractionTable.isEditing() && extractionTable.getCellEditor() != null) {
+            extractionTable.getCellEditor().stopCellEditing();
+        }
+
         step.setName(nameField.getText().trim());
         step.setMethod((String) methodCombo.getSelectedItem());
         step.setUrlTemplate(urlField.getText().trim());
@@ -223,21 +327,59 @@ public class RequestBlockCard extends JPanel {
 
         step.getExtractions().clear();
         for (int i = 0; i < extractionTableModel.getRowCount(); i++) {
-            String var = (String) extractionTableModel.getValueAt(i, 0);
+            Object varObj = extractionTableModel.getValueAt(i, 0);
+            String var = varObj != null ? varObj.toString().trim() : "";
             Object src = extractionTableModel.getValueAt(i, 1);
             Object type = extractionTableModel.getValueAt(i, 2);
-            String expr = (String) extractionTableModel.getValueAt(i, 3);
-            String def = (String) extractionTableModel.getValueAt(i, 4);
+            Object exprObj = extractionTableModel.getValueAt(i, 3);
+            String expr = exprObj != null ? exprObj.toString().trim() : "";
+            Object defObj = extractionTableModel.getValueAt(i, 4);
+            String def = defObj != null ? defObj.toString().trim() : "";
 
-            ExtractionSource sourceEnum = src instanceof ExtractionSource ? (ExtractionSource) src : ExtractionSource.RESPONSE_BODY;
-            ExtractionType typeEnum = type instanceof ExtractionType ? (ExtractionType) type : ExtractionType.JSON_PATH;
+            ExtractionSource sourceEnum = parseExtractionSource(src);
+            ExtractionType typeEnum = parseExtractionType(type);
 
             ExtractionRule rule = new ExtractionRule(var, sourceEnum, typeEnum, expr);
-            rule.setDefaultValue(def != null ? def : "");
+            rule.setDefaultValue(def);
             step.addExtraction(rule);
         }
 
         return step;
+    }
+
+    public static ExtractionSource parseExtractionSource(Object src) {
+        if (src instanceof ExtractionSource) {
+            return (ExtractionSource) src;
+        }
+        if (src != null) {
+            String str = src.toString().trim();
+            for (ExtractionSource s : ExtractionSource.values()) {
+                if (s.name().equalsIgnoreCase(str) || s.getDisplayName().equalsIgnoreCase(str)) {
+                    return s;
+                }
+            }
+        }
+        return ExtractionSource.RESPONSE_BODY;
+    }
+
+    public static ExtractionType parseExtractionType(Object type) {
+        if (type instanceof ExtractionType) {
+            return (ExtractionType) type;
+        }
+        if (type != null) {
+            String str = type.toString().trim();
+            for (ExtractionType t : ExtractionType.values()) {
+                if (t.name().equalsIgnoreCase(str) || t.getDisplayName().equalsIgnoreCase(str)) {
+                    return t;
+                }
+            }
+        }
+        return ExtractionType.JSON_PATH;
+    }
+
+    @Override
+    public Dimension getMaximumSize() {
+        return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
     }
 }
 

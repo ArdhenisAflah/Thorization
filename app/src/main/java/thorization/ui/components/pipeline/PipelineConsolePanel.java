@@ -24,18 +24,21 @@ public class PipelineConsolePanel extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
         // --- Top Status Header ---
-        JPanel topBar = new JPanel(new BorderLayout(5, 0));
-        topBar.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
-        topBar.setBackground(new Color(240, 243, 246));
+        JPanel topBar = new JPanel(new BorderLayout(8, 0));
+        topBar.setOpaque(false);
+        topBar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, UIManager.getColor("Separator.foreground") != null ? UIManager.getColor("Separator.foreground") : new Color(60, 63, 65)),
+                BorderFactory.createEmptyBorder(6, 6, 6, 6)
+        ));
 
-        statusLabel = new JLabel("Status: Idle — Select a pipeline and click [▶ Run Pipeline]");
+        statusLabel = new JLabel("Status: Paused (WIP)");
         statusLabel.setFont(statusLabel.getFont().deriveFont(Font.BOLD, 12f));
 
-        verdictBadge = new JLabel(" VERDICT: PENDING ");
+        verdictBadge = new JLabel(" VERDICT: N/A ");
         verdictBadge.setOpaque(true);
-        verdictBadge.setBackground(Color.GRAY);
+        verdictBadge.setBackground(new Color(108, 117, 125));
         verdictBadge.setForeground(Color.WHITE);
-        verdictBadge.setFont(verdictBadge.getFont().deriveFont(Font.BOLD, 12f));
+        verdictBadge.setFont(verdictBadge.getFont().deriveFont(Font.BOLD, 11f));
         verdictBadge.setBorder(BorderFactory.createEmptyBorder(3, 8, 3, 8));
 
         topBar.add(statusLabel, BorderLayout.WEST);
@@ -46,16 +49,26 @@ public class PipelineConsolePanel extends JPanel {
         traceArea = new JTextArea();
         traceArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
         traceArea.setEditable(false);
-        traceArea.setText("Thorization Pipeline Console ready.\nBuild steps above and execute to view live traces.\n");
+        traceArea.setText("[WIP / Future Development Notice]\n"
+                + "Pipeline Studio automated execution is currently paused.\n"
+                + "Development is focused on Core Interception, Safe Drop Replays, and AI MCP Bridge integration.\n"
+                + "Scenario design blocks are retained above for future reference.\n");
 
         JScrollPane traceScroll = new JScrollPane(traceArea);
-        traceScroll.setBorder(BorderFactory.createTitledBorder("Step-by-Step Execution Trace"));
+        traceScroll.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder("Execution Trace"),
+                BorderFactory.createEmptyBorder(4, 6, 4, 6)
+        ));
 
         String[] varCols = {"Variable Name", "Resolved Value"};
         variablesTableModel = new DefaultTableModel(varCols, 0);
         JTable variablesTable = new JTable(variablesTableModel);
+        variablesTable.setRowHeight(22);
         JScrollPane varScroll = new JScrollPane(variablesTable);
-        varScroll.setBorder(BorderFactory.createTitledBorder("Resolved Dynamic Variables"));
+        varScroll.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder("Resolved Variables"),
+                BorderFactory.createEmptyBorder(4, 6, 4, 6)
+        ));
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, traceScroll, varScroll);
         splitPane.setResizeWeight(0.65);

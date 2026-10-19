@@ -38,8 +38,11 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.TableRowSorter;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -98,35 +101,38 @@ public class TablePanel extends JPanel implements EngineListener {
     }
 
     private JPanel createTopToolbar() {
-        JPanel toolbar = new JPanel(new BorderLayout(8, 8));
-        toolbar.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
+        JPanel toolbar = new JPanel(new GridBagLayout());
+        toolbar.setBorder(BorderFactory.createEmptyBorder(0, 0, 6, 0));
 
         // Left controls: ON/OFF toggle, status indicator, Drop Mode Dropdown, Drop All Checkbox, Clear
         JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        powerToggleBtn = new JToggleButton("Thorization Engine: OFF");
+        powerToggleBtn = new JToggleButton("Engine: OFF");
         powerToggleBtn.setFont(powerToggleBtn.getFont().deriveFont(Font.BOLD, 12f));
         powerToggleBtn.setBackground(new Color(230, 230, 230));
+        powerToggleBtn.setToolTipText("Toggle Thorization traffic interception and auto-replay");
         powerToggleBtn.addActionListener(e -> {
             boolean active = powerToggleBtn.isSelected();
             controller.setEnabled(active);
             updatePowerButtonUI(active);
         });
 
-        statusBadgeLabel = new JLabel("Status: Idle");
+        statusBadgeLabel = new JLabel("● Idle");
         statusBadgeLabel.setFont(statusBadgeLabel.getFont().deriveFont(Font.BOLD, 12f));
         statusBadgeLabel.setForeground(Color.GRAY);
+        statusBadgeLabel.setToolTipText("Engine status: Idle");
 
         modeDropdown = new JComboBox<>(InterceptionMode.values());
-        modeDropdown.setToolTipText("Interception Action Mode (USP 1 Safe Drop Control)");
+        modeDropdown.setToolTipText("Interception Action Mode (Safe Drop Control)");
         modeDropdown.setSelectedItem(controller.getInterceptionMode());
         modeDropdown.addActionListener(e -> controller.setInterceptionMode((InterceptionMode) modeDropdown.getSelectedItem()));
 
-        dropAllQuickCheck = new JCheckBox("Drop All (inc. GET)");
+        dropAllQuickCheck = new JCheckBox("Drop All");
         dropAllQuickCheck.setToolTipText("When checked, even GET requests are safely dropped in Burp Proxy while replaying");
         dropAllQuickCheck.setSelected(controller.getFilterConfig().isDropAllRequests());
         dropAllQuickCheck.addActionListener(e -> controller.setDropAllRequests(dropAllQuickCheck.isSelected()));
 
-        JButton clearBtn = new JButton("Clear Table");
+        JButton clearBtn = new JButton("Clear");
+        clearBtn.setToolTipText("Clear all captured records in the table");
         clearBtn.addActionListener(e -> controller.clearRecords());
 
         leftPanel.add(powerToggleBtn);
@@ -137,9 +143,11 @@ public class TablePanel extends JPanel implements EngineListener {
         leftPanel.add(clearBtn);
 
         // Right controls: Search Filter, Export/Import, Count
-        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        rightPanel.add(new JLabel("Search Filter:"));
-        searchFilterField = new JTextField(15);
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        rightPanel.add(new JLabel("Search:"));
+        searchFilterField = new JTextField(12);
+        searchFilterField.setPreferredSize(new Dimension(120, 26));
+        searchFilterField.setToolTipText("Filter requests by URL, method, status, etc.");
         searchFilterField.getDocument().addDocumentListener(new DocumentListener() {
             @Override public void insertUpdate(DocumentEvent e) { applyFilter(); }
             @Override public void removeUpdate(DocumentEvent e) { applyFilter(); }
@@ -147,10 +155,12 @@ public class TablePanel extends JPanel implements EngineListener {
         });
         rightPanel.add(searchFilterField);
 
-        JButton exportBtn = new JButton("Export Session (.json)");
+        JButton exportBtn = new JButton("Export");
+        exportBtn.setToolTipText("Export session records and settings (.json)");
         exportBtn.addActionListener(e -> onExportSession());
 
-        JButton importBtn = new JButton("Import Session (.json)");
+        JButton importBtn = new JButton("Import");
+        importBtn.setToolTipText("Import session records and settings (.json)");
         importBtn.addActionListener(e -> onImportSession());
 
         countLabel = new JLabel("Total: 0");
@@ -160,8 +170,20 @@ public class TablePanel extends JPanel implements EngineListener {
         rightPanel.add(importBtn);
         rightPanel.add(countLabel);
 
-        toolbar.add(leftPanel, BorderLayout.WEST);
-        toolbar.add(rightPanel, BorderLayout.EAST);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 1.0;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.NONE;
+        toolbar.add(leftPanel, gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 0.0;
+        gbc.anchor = GridBagConstraints.EAST;
+        gbc.fill = GridBagConstraints.NONE;
+        toolbar.add(rightPanel, gbc);
+
         return toolbar;
     }
 
@@ -205,16 +227,6 @@ public class TablePanel extends JPanel implements EngineListener {
 
         // Right-Click Context Menu for re-testing and item removal
         JPopupMenu contextMenu = new JPopupMenu();
-        JMenuItem sendToPipelineMenuItem = new JMenuItem("⚡ Send to Pipeline Studio");
-        sendToPipelineMenuItem.setFont(sendToPipelineMenuItem.getFont().deriveFont(Font.BOLD));
-        sendToPipelineMenuItem.addActionListener(e -> {
-            List<AuditRecord> selected = getSelectedRecords();
-            if (!selected.isEmpty() && mainTabs != null) {
-                mainTabs.getPipelineStudioPanel().createPipelineFromRequests(selected);
-                mainTabs.switchToPipelineStudio();
-            }
-        });
-
         JMenuItem retestSelectedMenuItem = new JMenuItem("Re-Test Selected Request(s)...");
         retestSelectedMenuItem.addActionListener(e -> onRetestSelected());
 
@@ -227,8 +239,6 @@ public class TablePanel extends JPanel implements EngineListener {
         JMenuItem clearMenuItem = new JMenuItem("Clear All Records");
         clearMenuItem.addActionListener(e -> controller.clearRecords());
 
-        contextMenu.add(sendToPipelineMenuItem);
-        contextMenu.addSeparator();
         contextMenu.add(retestSelectedMenuItem);
         contextMenu.add(retestAllMenuItem);
         contextMenu.addSeparator();
@@ -282,17 +292,19 @@ public class TablePanel extends JPanel implements EngineListener {
 
     private void updatePowerButtonUI(boolean active) {
         if (active) {
-            powerToggleBtn.setText("Thorization Engine: ACTIVE");
+            powerToggleBtn.setText("Engine: ON");
             powerToggleBtn.setBackground(new Color(40, 167, 69));
             powerToggleBtn.setForeground(Color.WHITE);
-            statusBadgeLabel.setText("Status: Intercepting Traffic");
+            statusBadgeLabel.setText("● Active");
             statusBadgeLabel.setForeground(new Color(40, 167, 69));
+            statusBadgeLabel.setToolTipText("Engine status: Intercepting Traffic");
         } else {
-            powerToggleBtn.setText("Thorization Engine: OFF");
+            powerToggleBtn.setText("Engine: OFF");
             powerToggleBtn.setBackground(new Color(230, 230, 230));
             powerToggleBtn.setForeground(Color.BLACK);
-            statusBadgeLabel.setText("Status: Idle");
+            statusBadgeLabel.setText("● Idle");
             statusBadgeLabel.setForeground(Color.GRAY);
+            statusBadgeLabel.setToolTipText("Engine status: Idle");
         }
     }
 

@@ -32,9 +32,9 @@ public class MainTabbedPane extends JPanel {
         tablePanel = new TablePanel(api, controller, this);
         tabbedPane.addTab("Interception & Analysis Table", tablePanel);
 
-        // Tab 3: Pipeline Studio (Stateful Chains)
+        // Tab 3: Pipeline Studio (WIP / Future Development)
         pipelineStudioPanel = new PipelineStudioPanel(api, controller);
-        tabbedPane.addTab("Pipeline Studio (Chains)", pipelineStudioPanel);
+        tabbedPane.addTab("Pipeline Studio (WIP)", pipelineStudioPanel);
 
         // Tab 4: Statistics Dashboard
         statisticsPanel = new StatisticsPanel(controller);

@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * Dynamic Swing TableModel reflecting intercepted HTTP transactions, traffic source (Proxy/Repeater),
- * drop actions (USP 1), and multi-role authorization verdicts.
+ * drop actions, and multi-role authorization verdicts.
  */
 public class AuditTableModel extends AbstractTableModel {
 
@@ -127,10 +127,13 @@ public class AuditTableModel extends AbstractTableModel {
                 if (roleIndex < roles.size()) {
                     UserRole role = roles.get(roleIndex);
                     AuthorizationCheckResult res = record.getRoleResults().get(role.getId());
-                    return res != null ? res.getVerdict() : "Pending...";
+                    if (res != null) {
+                        return res.getVerdict();
+                    }
+                    return role.isEnabled() ? "Pending..." : "Disabled";
                 } else {
                     AuthorizationCheckResult unauth = record.getUnauthenticatedResult();
-                    return unauth != null ? unauth.getVerdict() : "Pending...";
+                    return unauth != null ? unauth.getVerdict() : "Disabled";
                 }
         }
     }

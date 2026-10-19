@@ -1,18 +1,23 @@
 package thorization.ui;
 
 import burp.api.montoya.MontoyaApi;
+import burp.api.montoya.http.message.HttpHeader;
 import thorization.core.EngineController;
 import thorization.core.EngineListener;
 import thorization.model.AuditRecord;
 import thorization.model.FilterConfig;
 import thorization.model.UserRole;
 import thorization.model.pipeline.ConditionBranch;
+import thorization.model.pipeline.ExtractionRule;
+import thorization.model.pipeline.ExtractionSource;
+import thorization.model.pipeline.ExtractionType;
 import thorization.model.pipeline.Pipeline;
 import thorization.model.pipeline.PipelineStep;
 import thorization.model.pipeline.RequestStep;
 import thorization.ui.components.pipeline.BranchBlockCard;
 import thorization.ui.components.pipeline.PipelineConsolePanel;
 import thorization.ui.components.pipeline.RequestBlockCard;
+import thorization.util.UiUtils;
 
 import javax.swing.*;
 import java.awt.*;
@@ -44,63 +49,117 @@ public class PipelineStudioPanel extends JPanel implements EngineListener {
         setLayout(new BorderLayout(5, 5));
         setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
 
-        // --- Top Control Bar ---
-        JPanel topToolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
-        topToolbar.setBackground(new Color(245, 247, 250));
-        topToolbar.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(220, 224, 230), 1),
-                BorderFactory.createEmptyBorder(4, 6, 4, 6)
+        // --- Top Container (Notice Banner + Toolbar) ---
+        JPanel northContainer = new JPanel(new BorderLayout(0, 6));
+        northContainer.setOpaque(false);
+
+        // 1. Notice Banner: WIP / Future Development
+        JPanel bannerPanel = new JPanel(new BorderLayout());
+        Color bannerBg = UiUtils.isDarkMode() ? new Color(52, 42, 22) : new Color(255, 248, 225);
+        Color bannerBorder = new Color(230, 160, 0);
+        bannerPanel.setBackground(bannerBg);
+        bannerPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(bannerBorder, 1, true),
+                BorderFactory.createEmptyBorder(6, 12, 6, 12)
         ));
 
-        topToolbar.add(new JLabel("Active Pipeline:"));
+        String bannerMsg = "[WIP / Future Development] Pipeline Studio automated execution is currently paused. " +
+                "Development is focused on Core Interception, Safe Drop Replays, and AI MCP integration.";
+        JLabel bannerText = new JLabel(bannerMsg);
+        bannerText.setFont(bannerText.getFont().deriveFont(Font.PLAIN, 12f));
+        Color bannerFg = UiUtils.isDarkMode() ? new Color(240, 200, 120) : new Color(133, 77, 0);
+        bannerText.setForeground(bannerFg);
+        bannerPanel.setToolTipText(bannerMsg);
+        bannerText.setToolTipText(bannerMsg);
+
+        bannerPanel.add(bannerText, BorderLayout.CENTER);
+        northContainer.add(bannerPanel, BorderLayout.NORTH);
+
+        // 2. Toolbar
+        JPanel topToolbar = new JPanel(new GridBagLayout());
+        topToolbar.setOpaque(false);
+        topToolbar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, UIManager.getColor("Separator.foreground") != null ? UIManager.getColor("Separator.foreground") : new Color(60, 63, 65)),
+                BorderFactory.createEmptyBorder(6, 6, 6, 6)
+        ));
+
+        // Left Controls: Scenario management
+        JPanel leftGroup = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        leftGroup.setOpaque(false);
+
+        leftGroup.add(new JLabel("Scenario:"));
         pipelineSelector = new JComboBox<>();
-        pipelineSelector.setPreferredSize(new Dimension(220, 26));
+        pipelineSelector.setPreferredSize(new Dimension(170, 26));
         pipelineSelector.addActionListener(e -> {
             Pipeline selected = (Pipeline) pipelineSelector.getSelectedItem();
             if (selected != null) {
                 loadPipeline(selected);
             }
         });
-        topToolbar.add(pipelineSelector);
+        leftGroup.add(pipelineSelector);
 
-        JButton newPipelineBtn = new JButton("+ New Scenario");
-        JButton savePipelineBtn = new JButton("💾 Save");
-        JButton deletePipelineBtn = new JButton("🗑️ Delete");
-        JButton runPipelineBtn = new JButton("▶ Run Pipeline");
-        runPipelineBtn.setBackground(new Color(40, 167, 69));
-        runPipelineBtn.setForeground(Color.WHITE);
+        JButton newPipelineBtn = new JButton("+ New");
+        newPipelineBtn.setToolTipText("Create a new BOLA test scenario");
+        JButton savePipelineBtn = new JButton("Save");
+        savePipelineBtn.setToolTipText("Save current scenario changes");
+        JButton deletePipelineBtn = new JButton("Delete");
+        deletePipelineBtn.setToolTipText("Delete selected scenario");
+        JButton runPipelineBtn = new JButton("▶ Run (Paused - WIP)");
+        runPipelineBtn.setToolTipText("Pipeline Studio execution is currently paused for future development.");
+        runPipelineBtn.setEnabled(false);
+        runPipelineBtn.setBackground(new Color(108, 117, 125));
+        runPipelineBtn.setForeground(new Color(220, 220, 220));
         runPipelineBtn.setFont(runPipelineBtn.getFont().deriveFont(Font.BOLD, 12f));
 
-        topToolbar.add(newPipelineBtn);
-        topToolbar.add(savePipelineBtn);
-        topToolbar.add(deletePipelineBtn);
-        topToolbar.add(Box.createHorizontalStrut(10));
-        topToolbar.add(runPipelineBtn);
+        leftGroup.add(newPipelineBtn);
+        leftGroup.add(savePipelineBtn);
+        leftGroup.add(deletePipelineBtn);
+        leftGroup.add(runPipelineBtn);
 
-        topToolbar.add(Box.createHorizontalStrut(15));
-        topToolbar.add(new JSeparator(JSeparator.VERTICAL));
-        topToolbar.add(Box.createHorizontalStrut(10));
+        // Right Controls: Step additions
+        JPanel rightGroup = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        rightGroup.setOpaque(false);
 
-        JButton addReqBtn = new JButton("🟦 + Add Request Step");
-        JButton addBranchBtn = new JButton("🟨 + Add IF/ELSE Branch");
+        JButton addReqBtn = new JButton("+ HTTP Step");
+        addReqBtn.setToolTipText("Add an HTTP request step with role credential binding");
+        JButton addBranchBtn = new JButton("+ Condition");
+        addBranchBtn.setToolTipText("Add an IF/ELSE validation branch or assertion rule");
 
-        topToolbar.add(addReqBtn);
-        topToolbar.add(addBranchBtn);
+        rightGroup.add(addReqBtn);
+        rightGroup.add(addBranchBtn);
 
-        add(topToolbar, BorderLayout.NORTH);
+        GridBagConstraints tgbc = new GridBagConstraints();
+        tgbc.gridx = 0; tgbc.gridy = 0; tgbc.weightx = 1.0;
+        tgbc.anchor = GridBagConstraints.WEST;
+        tgbc.fill = GridBagConstraints.NONE;
+        topToolbar.add(leftGroup, tgbc);
+
+        tgbc.gridx = 1; tgbc.weightx = 0.0;
+        tgbc.anchor = GridBagConstraints.EAST;
+        tgbc.fill = GridBagConstraints.NONE;
+        topToolbar.add(rightGroup, tgbc);
+
+        northContainer.add(topToolbar, BorderLayout.CENTER);
+        add(northContainer, BorderLayout.NORTH);
 
         // --- Center: Scrollable Cards Container ---
         cardsContainer = new JPanel();
         cardsContainer.setLayout(new BoxLayout(cardsContainer, BoxLayout.Y_AXIS));
-        cardsContainer.setBackground(Color.WHITE);
+        cardsContainer.setOpaque(false);
+        cardsContainer.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
 
         JScrollPane cardsScroll = new JScrollPane(cardsContainer);
+        cardsScroll.getViewport().setOpaque(false);
+        cardsScroll.setOpaque(false);
         cardsScroll.getVerticalScrollBar().setUnitIncrement(16);
-        cardsScroll.setBorder(BorderFactory.createTitledBorder("Visual Step-by-Step Block Pipeline"));
+        cardsScroll.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder("Step-by-Step Scenario Pipeline"),
+                BorderFactory.createEmptyBorder(6, 6, 6, 6)
+        ));
 
         // --- Bottom: Pipeline Console Panel ---
         consolePanel = new PipelineConsolePanel();
-        consolePanel.setPreferredSize(new Dimension(800, 220));
+        consolePanel.setPreferredSize(new Dimension(800, 200));
 
         JSplitPane mainSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, cardsScroll, consolePanel);
         mainSplit.setResizeWeight(0.65);
@@ -111,12 +170,43 @@ public class PipelineStudioPanel extends JPanel implements EngineListener {
             String name = JOptionPane.showInputDialog(this, "Enter New Pipeline Name:", "New Pipeline Scenario", JOptionPane.PLAIN_MESSAGE);
             if (name != null && !name.trim().isEmpty()) {
                 Pipeline p = new Pipeline(name.trim(), "Stateful test scenario");
-                // Add default sample steps
-                RequestStep step1 = new RequestStep("Step 1: Setup Instance (User A)", "POST", "https://example.com/api/resource", "");
-                step1.setBodyTemplate("{\"name\": \"TestObject\", \"code\": \"{{UPK}}\"}");
-                RequestStep step2 = new RequestStep("Step 2: Access Check (User B)", "GET", "https://example.com/api/resource/{{VAR_ID}}", "");
+                String role1 = !currentRoles.isEmpty() ? currentRoles.get(0).getId() : "UNAUTHENTICATED";
+                String role2 = currentRoles.size() > 1 ? currentRoles.get(1).getId() : "UNAUTHENTICATED";
+
+                // Step 1: Create/Setup Resource as Victim
+                RequestStep step1 = new RequestStep("Step 1: Setup Resource (Victim)", "POST", "https://api.example.local/resource", role1);
+                step1.setBodyTemplate("{\n  \"name\": \"TargetData\",\n  \"status\": \"private\"\n}");
+                ExtractionRule ext = new ExtractionRule("RESOURCE_ID", ExtractionSource.RESPONSE_BODY, ExtractionType.JSON_PATH, "$.id");
+                ext.setDefaultValue("REC-1001");
+                step1.addExtraction(ext);
+
+                // Step 2: Verify Setup Succeeded
+                ConditionBranch branch1 = new ConditionBranch(
+                        "Step 2: Check Setup Succeeded",
+                        ConditionBranch.ConditionType.STATUS_CODE_EQUALS,
+                        "200",
+                        ConditionBranch.BranchAction.CONTINUE,
+                        ConditionBranch.BranchAction.STOP_PIPELINE
+                );
+                branch1.setFailureNote("Resource setup step failed - pipeline halted");
+
+                // Step 3: Access Resource as Attacker
+                RequestStep step2 = new RequestStep("Step 3: Access Resource (Attacker)", "GET", "https://api.example.local/resource/{{RESOURCE_ID}}", role2);
+
+                // Step 4: Assert BOLA Vulnerability
+                ConditionBranch branch2 = new ConditionBranch(
+                        "Step 4: Assert BOLA Vulnerability",
+                        ConditionBranch.ConditionType.STATUS_CODE_EQUALS,
+                        "200",
+                        ConditionBranch.BranchAction.MARK_VERDICT_BYPASS,
+                        ConditionBranch.BranchAction.MARK_VERDICT_ENFORCED
+                );
+                branch2.setFailureNote("Attacker was denied access (HTTP 401/403) - authorization enforced");
+
                 p.addStep(step1);
+                p.addStep(branch1);
                 p.addStep(step2);
+                p.addStep(branch2);
 
                 engineController.addPipeline(p);
                 loadPipeline(p);
@@ -173,22 +263,39 @@ public class PipelineStudioPanel extends JPanel implements EngineListener {
 
     private void createDefaultSamplePipeline() {
         Pipeline sample = new Pipeline("BOLA Cross-Role Data Verification", "Tests if User 2 can read records created by User 1");
-        RequestStep s1 = new RequestStep("Step 1: Create Record (Doctor A)", "POST", "https://selaras.kemkes.go.id/selaras_api/mobile/save_individu", "");
-        s1.setBodyTemplate("[\n  {\n    \"id_unique\": \"ID20260824125737\",\n    \"kode_fasyankes\": \"P3674020202\",\n    \"nik\": \"ardaeded\"\n  }\n]");
+        String role1 = !currentRoles.isEmpty() ? currentRoles.get(0).getId() : "UNAUTHENTICATED";
+        String role2 = currentRoles.size() > 1 ? currentRoles.get(1).getId() : "UNAUTHENTICATED";
 
-        ConditionBranch branch = new ConditionBranch(
+        RequestStep s1 = new RequestStep("Step 1: Create Record (Doctor A)", "POST", "https://selaras.kemkes.go.id/selaras_api/mobile/save_individu", role1);
+        s1.setBodyTemplate("[\n  {\n    \"id_unique\": \"ID20260824125737\",\n    \"kode_fasyankes\": \"P3674020202\",\n    \"nik\": \"ardaeded\"\n  }\n]");
+        ExtractionRule ext = new ExtractionRule("UPK_CODE", ExtractionSource.RESPONSE_BODY, ExtractionType.JSON_PATH, "$[0].id_unique");
+        ext.setDefaultValue("ID20260824125737");
+        s1.addExtraction(ext);
+
+        ConditionBranch branch1 = new ConditionBranch(
                 "Step 2: Check Creation Success",
                 ConditionBranch.ConditionType.STATUS_CODE_EQUALS,
                 "200",
                 ConditionBranch.BranchAction.CONTINUE,
                 ConditionBranch.BranchAction.STOP_PIPELINE
         );
+        branch1.setFailureNote("Record creation step failed - aborting pipeline");
 
-        RequestStep s2 = new RequestStep("Step 3: Query Data (Attacker B)", "GET", "https://selaras.kemkes.go.id/selaras_api/mobile/list_biodata?upk={{UPK_CODE}}", "");
+        RequestStep s2 = new RequestStep("Step 3: Query Data (Attacker B)", "GET", "https://selaras.kemkes.go.id/selaras_api/mobile/list_biodata?upk={{UPK_CODE}}", role2);
+
+        ConditionBranch branch2 = new ConditionBranch(
+                "Step 4: Assert BOLA Vulnerability",
+                ConditionBranch.ConditionType.STATUS_CODE_EQUALS,
+                "200",
+                ConditionBranch.BranchAction.MARK_VERDICT_BYPASS,
+                ConditionBranch.BranchAction.MARK_VERDICT_ENFORCED
+        );
+        branch2.setFailureNote("Attacker query was blocked or returned non-200 (Protected)");
 
         sample.addStep(s1);
-        sample.addStep(branch);
+        sample.addStep(branch1);
         sample.addStep(s2);
+        sample.addStep(branch2);
 
         engineController.addPipeline(sample);
         loadPipeline(sample);
@@ -209,8 +316,21 @@ public class PipelineStudioPanel extends JPanel implements EngineListener {
             AuditRecord r = records.get(i);
             RequestStep step = new RequestStep("Step " + (i + 1) + ": " + r.getMethod() + " " + r.getPath(),
                     r.getMethod(), r.getUrl(), "");
-            if (r.getOriginalRequest() != null && r.getOriginalRequest().body() != null) {
-                step.setBodyTemplate(r.getOriginalRequest().bodyToString());
+            if (r.getOriginalRequest() != null) {
+                if (r.getOriginalRequest().body() != null && !r.getOriginalRequest().bodyToString().isEmpty()) {
+                    step.setBodyTemplate(r.getOriginalRequest().bodyToString());
+                }
+                if (r.getOriginalRequest().headers() != null) {
+                    StringBuilder hdrBuilder = new StringBuilder();
+                    for (HttpHeader h : r.getOriginalRequest().headers()) {
+                        if (!"Host".equalsIgnoreCase(h.name()) && !"Content-Length".equalsIgnoreCase(h.name())) {
+                            hdrBuilder.append(h.name()).append(": ").append(h.value()).append("\n");
+                        }
+                    }
+                    if (hdrBuilder.length() > 0) {
+                        step.setHeadersTemplate(hdrBuilder.toString().trim());
+                    }
+                }
             }
             pipeline.addStep(step);
         }
@@ -235,8 +355,9 @@ public class PipelineStudioPanel extends JPanel implements EngineListener {
                             c -> moveStepDown(index),
                             c -> removeStep(index)
                     );
+                    card.setAlignmentX(Component.CENTER_ALIGNMENT);
                     cardsContainer.add(card);
-                    cardsContainer.add(Box.createVerticalStrut(8));
+                    cardsContainer.add(Box.createVerticalStrut(10));
                     stepCards.add(card);
                 } else if (step instanceof ConditionBranch) {
                     BranchBlockCard card = new BranchBlockCard((ConditionBranch) step,
@@ -244,8 +365,9 @@ public class PipelineStudioPanel extends JPanel implements EngineListener {
                             c -> moveStepDown(index),
                             c -> removeStep(index)
                     );
+                    card.setAlignmentX(Component.CENTER_ALIGNMENT);
                     cardsContainer.add(card);
-                    cardsContainer.add(Box.createVerticalStrut(8));
+                    cardsContainer.add(Box.createVerticalStrut(10));
                     stepCards.add(card);
                 }
             }

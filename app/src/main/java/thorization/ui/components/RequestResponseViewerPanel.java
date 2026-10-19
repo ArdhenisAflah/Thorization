@@ -244,11 +244,23 @@ public class RequestResponseViewerPanel extends JPanel {
         }
 
         // 1. Display Original
-        if (originalRequestEditor != null && record.getOriginalRequest() != null) {
-            originalRequestEditor.setRequest(record.getOriginalRequest());
+        if (originalRequestEditor != null) {
+            try {
+                if (record.getOriginalRequest() != null) {
+                    originalRequestEditor.setRequest(record.getOriginalRequest());
+                } else {
+                    originalRequestEditor.setRequest(HttpRequest.httpRequest(""));
+                }
+            } catch (Exception ignored) {}
         }
-        if (originalResponseEditor != null && record.getOriginalResponse() != null) {
-            originalResponseEditor.setResponse(record.getOriginalResponse());
+        if (originalResponseEditor != null) {
+            try {
+                if (record.getOriginalResponse() != null) {
+                    originalResponseEditor.setResponse(record.getOriginalResponse());
+                } else {
+                    originalResponseEditor.setResponse(HttpResponse.httpResponse(""));
+                }
+            } catch (Exception ignored) {}
         }
 
         // 2. Display each Role in its dedicated tab
@@ -265,11 +277,23 @@ public class RequestResponseViewerPanel extends JPanel {
         // 3. Display Unauthenticated Replay
         AuthorizationCheckResult unauth = record.getUnauthenticatedResult();
         if (unauth != null) {
-            if (unauthRequestEditor != null && unauth.getRequest() != null) {
-                unauthRequestEditor.setRequest(unauth.getRequest());
+            if (unauthRequestEditor != null) {
+                try {
+                    if (unauth.getRequest() != null) {
+                        unauthRequestEditor.setRequest(unauth.getRequest());
+                    } else {
+                        unauthRequestEditor.setRequest(HttpRequest.httpRequest(""));
+                    }
+                } catch (Exception ignored) {}
             }
-            if (unauthResponseEditor != null && unauth.getResponse() != null) {
-                unauthResponseEditor.setResponse(unauth.getResponse());
+            if (unauthResponseEditor != null) {
+                try {
+                    if (unauth.getResponse() != null) {
+                        unauthResponseEditor.setResponse(unauth.getResponse());
+                    } else {
+                        unauthResponseEditor.setResponse(HttpResponse.httpResponse(""));
+                    }
+                } catch (Exception ignored) {}
             }
             Verdict v = unauth.getVerdict();
             unauthStatusLabel.setText(String.format(" Unauthenticated Verdict: %s | Status: %d | Len: %d bytes | %s",
@@ -281,6 +305,16 @@ public class RequestResponseViewerPanel extends JPanel {
                 unauthStatusLabel.setForeground(v.getForegroundColor());
             }
         } else {
+            if (unauthRequestEditor != null) {
+                try {
+                    unauthRequestEditor.setRequest(HttpRequest.httpRequest(""));
+                } catch (Exception ignored) {}
+            }
+            if (unauthResponseEditor != null) {
+                try {
+                    unauthResponseEditor.setResponse(HttpResponse.httpResponse(""));
+                } catch (Exception ignored) {}
+            }
             unauthStatusLabel.setText(" Unauthenticated Replay: Not tested / Disabled");
             unauthStatusLabel.setForeground(Color.GRAY);
         }
@@ -397,11 +431,23 @@ public class RequestResponseViewerPanel extends JPanel {
 
         public void displayResult(AuthorizationCheckResult result) {
             if (result != null) {
-                if (requestEditor != null && result.getRequest() != null) {
-                    requestEditor.setRequest(result.getRequest());
+                if (requestEditor != null) {
+                    try {
+                        if (result.getRequest() != null) {
+                            requestEditor.setRequest(result.getRequest());
+                        } else {
+                            requestEditor.setRequest(HttpRequest.httpRequest(""));
+                        }
+                    } catch (Exception ignored) {}
                 }
-                if (responseEditor != null && result.getResponse() != null) {
-                    responseEditor.setResponse(result.getResponse());
+                if (responseEditor != null) {
+                    try {
+                        if (result.getResponse() != null) {
+                            responseEditor.setResponse(result.getResponse());
+                        } else {
+                            responseEditor.setResponse(HttpResponse.httpResponse(""));
+                        }
+                    } catch (Exception ignored) {}
                 }
                 Verdict v = result.getVerdict();
                 statusLabel.setText(String.format(" Role: %s | Verdict: %s | Status: %d | Len: %d bytes | Sim: %.2f | Time: %d ms",
@@ -417,7 +463,17 @@ public class RequestResponseViewerPanel extends JPanel {
                     statusLabel.setForeground(Color.BLACK);
                 }
             } else {
-                statusLabel.setText(" Role: " + roleName + " | Status: Not tested / Pending");
+                if (requestEditor != null) {
+                    try {
+                        requestEditor.setRequest(HttpRequest.httpRequest(""));
+                    } catch (Exception ignored) {}
+                }
+                if (responseEditor != null) {
+                    try {
+                        responseEditor.setResponse(HttpResponse.httpResponse(""));
+                    } catch (Exception ignored) {}
+                }
+                statusLabel.setText(" Role: " + roleName + " | Status: Not tested / Disabled");
                 statusLabel.setForeground(Color.GRAY);
             }
         }

@@ -61,6 +61,9 @@ public class VerdictCellRenderer extends DefaultTableCellRenderer {
                 } else if ("Proxy".equalsIgnoreCase(text)) {
                     label.setForeground(PROXY_FG);
                     label.setBackground(table.getBackground());
+                } else if ("Disabled".equalsIgnoreCase(text)) {
+                    label.setForeground(Color.GRAY);
+                    label.setBackground(table.getBackground());
                 } else {
                     label.setForeground(table.getForeground());
                     label.setBackground(table.getBackground());
