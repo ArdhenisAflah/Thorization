@@ -81,6 +81,67 @@ class RolesPanelTest {
         assertEquals("Admin-Attacker-Updated", controller.getRoles().get(0).getName());
     }
 
+    @Test
+    void testGenerateDuplicateRoleName_SequentialOrdering() {
+        List<UserRole> roles = new java.util.ArrayList<>();
+        roles.add(new UserRole("admin", "", ""));
+
+        // Duplicate admin -> admin1
+        String dup1 = RolesPanel.generateDuplicateRoleName("admin", roles);
+        assertEquals("admin1", dup1);
+        roles.add(new UserRole(dup1, "", ""));
+
+        // Duplicate admin again -> admin2
+        String dup2 = RolesPanel.generateDuplicateRoleName("admin", roles);
+        assertEquals("admin2", dup2);
+        roles.add(new UserRole(dup2, "", ""));
+
+        // Duplicate admin2 -> admin3
+        String dup3 = RolesPanel.generateDuplicateRoleName("admin2", roles);
+        assertEquals("admin3", dup3);
+        roles.add(new UserRole(dup3, "", ""));
+
+        // Verify full sequence matches user requirement: admin, admin1, admin2, admin3
+        assertEquals("admin", roles.get(0).getName());
+        assertEquals("admin1", roles.get(1).getName());
+        assertEquals("admin2", roles.get(2).getName());
+        assertEquals("admin3", roles.get(3).getName());
+
+        // Legacy format clean-up: "admin (Copy)" -> "admin4" (since admin1-3 already exist)
+        String legacyDup = RolesPanel.generateDuplicateRoleName("admin (Copy)", roles);
+        assertEquals("admin4", legacyDup);
+    }
+
+    @Test
+    void testDuplicateRoleActionIntegration() throws Exception {
+        controller.addRole(new UserRole("admin", "H: v", "c=1"));
+        rolesPanel.onRolesChanged(controller.getRoles());
+
+        Field indexField = RolesPanel.class.getDeclaredField("selectedRoleIndex");
+        indexField.setAccessible(true);
+        indexField.set(rolesPanel, 0);
+
+        Method dupMethod = RolesPanel.class.getDeclaredMethod("onDuplicateRole");
+        dupMethod.setAccessible(true);
+
+        // 1st duplicate: admin -> admin1
+        dupMethod.invoke(rolesPanel);
+        assertEquals(2, controller.getRoles().size());
+        assertEquals("admin1", controller.getRoles().get(1).getName());
+
+        // 2nd duplicate: duplicating admin again -> admin2
+        indexField.set(rolesPanel, 0);
+        dupMethod.invoke(rolesPanel);
+        assertEquals(3, controller.getRoles().size());
+        assertEquals("admin2", controller.getRoles().get(2).getName());
+
+        // 3rd duplicate: duplicating admin2 -> admin3
+        indexField.set(rolesPanel, 2);
+        dupMethod.invoke(rolesPanel);
+        assertEquals(4, controller.getRoles().size());
+        assertEquals("admin3", controller.getRoles().get(3).getName());
+    }
+
     private Object getField(Object target, String fieldName) throws Exception {
         Field field = target.getClass().getDeclaredField(fieldName);
         field.setAccessible(true);

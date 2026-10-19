@@ -38,6 +38,8 @@ import java.awt.Insets;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Tab 1: Panel for managing user roles, custom header injections, cookies,
@@ -133,6 +135,10 @@ public class RolesPanel extends JPanel implements EngineListener {
         JButton duplicateBtn = new JButton("Duplicate");
         JButton moveUpBtn = new JButton("▲ Up");
         JButton moveDownBtn = new JButton("▼ Down");
+
+        addBtn.setToolTipText("Add a new empty role entry");
+        removeBtn.setToolTipText("Remove the selected role");
+        duplicateBtn.setToolTipText("Duplicate the selected role with sequential index naming");
 
         addBtn.addActionListener(e -> onAddNewRole());
         removeBtn.addActionListener(e -> onRemoveRole());
@@ -439,7 +445,8 @@ public class RolesPanel extends JPanel implements EngineListener {
     private void onDuplicateRole() {
         if (selectedRoleIndex >= 0 && selectedRoleIndex < controller.getRoles().size()) {
             UserRole current = controller.getRoles().get(selectedRoleIndex);
-            UserRole clone = new UserRole(current.getName() + " (Copy)", current.getRawHeaders(), current.getRawCookies());
+            String newName = generateDuplicateRoleName(current.getName(), controller.getRoles());
+            UserRole clone = new UserRole(newName, current.getRawHeaders(), current.getRawCookies());
             clone.setEnabled(current.isEnabled());
             controller.addRole(clone);
             refreshRolesTable();
@@ -452,6 +459,52 @@ public class RolesPanel extends JPanel implements EngineListener {
         } else {
             showMessageDialogSafe(this, "Please select a role to duplicate.", "Info", JOptionPane.INFORMATION_MESSAGE);
         }
+    }
+
+    public static String generateDuplicateRoleName(String currentName, List<UserRole> existingRoles) {
+        if (currentName == null || currentName.trim().isEmpty()) {
+            currentName = "Role";
+        }
+        currentName = currentName.trim();
+
+        if (currentName.endsWith(" (Copy)")) {
+            currentName = currentName.substring(0, currentName.length() - 7).trim();
+        } else if (currentName.endsWith("(Copy)")) {
+            currentName = currentName.substring(0, currentName.length() - 6).trim();
+        }
+
+        Pattern pattern = Pattern.compile("^(.*?)(\\d+)$");
+        Matcher matcher = pattern.matcher(currentName);
+
+        String prefix;
+        int nextIndex;
+        if (matcher.matches()) {
+            prefix = matcher.group(1);
+            try {
+                nextIndex = Integer.parseInt(matcher.group(2)) + 1;
+            } catch (NumberFormatException e) {
+                prefix = currentName;
+                nextIndex = 1;
+            }
+        } else {
+            prefix = currentName;
+            nextIndex = 1;
+        }
+
+        Set<String> existingNames = new HashSet<>();
+        if (existingRoles != null) {
+            for (UserRole r : existingRoles) {
+                if (r != null && r.getName() != null) {
+                    existingNames.add(r.getName().trim().toLowerCase());
+                }
+            }
+        }
+
+        while (existingNames.contains((prefix + nextIndex).toLowerCase())) {
+            nextIndex++;
+        }
+
+        return prefix + nextIndex;
     }
 
     private void onSaveCurrentRole() {
