@@ -1,0 +1,760 @@
+{
+  "info": {
+    "_postman_id": "thorization-ai-bridge-v1",
+    "name": "Thorization AI Agent Bridge API",
+    "description": "Comprehensive Postman test collection for Thorization's embedded REST API Bridge (127.0.0.1:1337). Audited for parameter clarity, structured JSON schemas, and AI agent integration.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:1337/api",
+      "type": "string"
+    },
+    {
+      "key": "createdRoleId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "analyzedRecordId",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. System & Engine Status",
+      "item": [
+        {
+          "name": "GET Extension Status & Active Filters",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Bridge is online and reports extension version\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql(\"online\");",
+                  "    pm.expect(json.version).to.be.a(\"string\");",
+                  "    pm.expect(json.engineEnabled).to.be.a(\"boolean\");",
+                  "    pm.expect(json.filterConfig).to.be.an(\"object\");",
+                  "});",
+                  "",
+                  "pm.test(\"Filter config contains target HTTP methods\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.filterConfig.targetMethods).to.be.an(\"array\");",
+                  "    pm.expect(json.filterConfig.targetMethods).to.include(\"GET\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["status"]
+            },
+            "description": "Queries the health status, loaded extension version, active interception mode, and filter configuration rules."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Role Management",
+      "item": [
+        {
+          "name": "GET All Roles",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is an array of roles\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.be.an(\"array\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["roles"]
+            },
+            "description": "Returns the complete list of configured user roles, including headers, cookies, and active status."
+          }
+        },
+        {
+          "name": "POST Create Role (Structured Object Format)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Role is created with valid ID and name\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.id).to.be.a(\"string\");",
+                  "    pm.expect(json.name).to.eql(\"Attacker-Role-A\");",
+                  "    pm.expect(json.enabled).to.eql(true);",
+                  "    pm.collectionVariables.set(\"createdRoleId\", json.id);",
+                  "});",
+                  "",
+                  "pm.test(\"Both raw and structured headers are populated\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.headers).to.include(\"Authorization: Bearer attacker-token-123\");",
+                  "    pm.expect(json.headersMap).to.be.an(\"object\");",
+                  "    pm.expect(json.headersMap[\"Authorization\"]).to.eql(\"Bearer attacker-token-123\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role_name\": \"Attacker-Role-A\",\n  \"headers_map\": {\n    \"Authorization\": \"Bearer attacker-token-123\",\n    \"X-Tenant-ID\": \"attacker-tenant\"\n  },\n  \"cookies_map\": {\n    \"session_id\": \"attacker-cookie-val\"\n  },\n  \"is_enabled\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["roles"]
+            },
+            "description": "Creates a role using structured JSON key-value pairs for headers and cookies. Parameters demonstrate snake_case alias support."
+          }
+        },
+        {
+          "name": "POST Create Role (Raw Text Format)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Role created from multiline string\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.id).to.be.a(\"string\");",
+                  "    pm.expect(json.name).to.eql(\"Victim-Role-B\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Victim-Role-B\",\n  \"headers\": \"Authorization: Bearer victim-token-999\\nX-User-Type: Victim\",\n  \"cookies\": \"session=victim-cookie-999\",\n  \"enabled\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["roles"]
+            },
+            "description": "Creates a role using classic raw multiline header strings and cookie strings."
+          }
+        },
+        {
+          "name": "GET Single Role by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Role matches retrieved ID\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.id).to.eql(pm.collectionVariables.get(\"createdRoleId\"));",
+                  "    pm.expect(json.name).to.eql(\"Attacker-Role-A\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles/{{createdRoleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["roles", "{{createdRoleId}}"]
+            },
+            "description": "Retrieves the exact role configuration by its unique ID."
+          }
+        },
+        {
+          "name": "PUT Update Role",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Role name and headers updated\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.name).to.eql(\"Attacker-Role-Updated\");",
+                  "    pm.expect(json.headers).to.include(\"attacker-token-renewed\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Attacker-Role-Updated\",\n  \"headers_map\": {\n    \"Authorization\": \"Bearer attacker-token-renewed\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/roles/{{createdRoleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["roles", "{{createdRoleId}}"]
+            },
+            "description": "Updates an existing role's name, credentials, or enabled state."
+          }
+        },
+        {
+          "name": "DELETE Role by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Role successfully removed\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "    pm.expect(json.roleId).to.eql(pm.collectionVariables.get(\"createdRoleId\"));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles/{{createdRoleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["roles", "{{createdRoleId}}"]
+            },
+            "description": "Deletes a role from Thorization's active evaluation set."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Request Analysis & Authorization Audit",
+      "item": [
+        {
+          "name": "POST Analyze - Structured Request (Sync)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Analysis executed successfully\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "    pm.expect(json.recordId).to.be.a(\"number\");",
+                  "    pm.collectionVariables.set(\"analyzedRecordId\", json.recordId.toString());",
+                  "});",
+                  "",
+                  "pm.test(\"Provides clear high-level AI verdict indicators\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.vulnerabilityDetected).to.be.a(\"boolean\");",
+                  "    pm.expect(json.vulnerableRoles).to.be.an(\"array\");",
+                  "    pm.expect(json.summary).to.be.a(\"string\");",
+                  "});",
+                  "",
+                  "pm.test(\"Contains detailed role verdicts map\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.roleVerdicts).to.be.an(\"object\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"target_url\": \"https://api.crapi.local/identity/api/v2/vehicle/orders\",\n  \"http_method\": \"GET\",\n  \"headers_map\": {\n    \"Accept\": \"application/json\",\n    \"User-Agent\": \"Thorization-Postman-Audit\"\n  },\n  \"bypass_rules\": true,\n  \"check_unauthenticated\": true,\n  \"source_tool\": \"Postman-Auditor\",\n  \"synchronous\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/analyze",
+              "host": ["{{baseUrl}}"],
+              "path": ["analyze"]
+            },
+            "description": "Submits a structured HTTP request to be evaluated against active roles. Returns synchronous verdicts with summary flags."
+          }
+        },
+        {
+          "name": "POST Analyze - Raw HTTP Wire Format",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Parsed raw HTTP request wire format correctly\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "    pm.expect(json.method).to.eql(\"POST\");",
+                  "    pm.expect(json.url).to.include(\"crapi.local\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"raw_request\": \"POST /workshop/api/shop/return_order HTTP/1.1\\r\\nHost: crapi.local\\r\\nContent-Type: application/json\\r\\nAuthorization: Bearer victim-seed-token\\r\\n\\r\\n{\\\"order_id\\\": \\\"ORD-9912\\\"}\",\n  \"bypass_rules\": true,\n  \"source_tool\": \"Burp-Repeater-Proxy\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/analyze",
+              "host": ["{{baseUrl}}"],
+              "path": ["analyze"]
+            },
+            "description": "Submits a raw RFC 7230 wire format HTTP request string. Thorization extracts method, path, host headers, and body automatically."
+          }
+        },
+        {
+          "name": "POST Analyze - Async Background Dispatch",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Returns immediately with scheduled task recordId\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "    pm.expect(json.recordId).to.be.a(\"number\");",
+                  "    pm.expect(json.message).to.include(\"background\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://api.crapi.local/community/api/v2/coupon/validate\",\n  \"method\": \"POST\",\n  \"body\": \"{\\\"coupon_code\\\": \\\"DISCOUNT20\\\"}\",\n  \"bypassFilter\": true,\n  \"sync\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/analyze",
+              "host": ["{{baseUrl}}"],
+              "path": ["analyze"]
+            },
+            "description": "Dispatches the replay audit asynchronously. Useful for high-volume automated vulnerability scanners."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Audit Records & Vulnerability History",
+      "item": [
+        {
+          "name": "GET All Audit Records (Summary)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is an array of record summaries\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.be.an(\"array\");",
+                  "    if (json.length > 0) {",
+                  "        pm.expect(json[0].id).to.be.a(\"number\");",
+                  "        pm.expect(json[0].method).to.be.a(\"string\");",
+                  "        pm.expect(json[0].url).to.be.a(\"string\");",
+                  "        pm.expect(json[0].vulnerabilityDetected).to.be.a(\"boolean\");",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/records",
+              "host": ["{{baseUrl}}"],
+              "path": ["records"]
+            },
+            "description": "Queries all intercepted and analyzed HTTP transactions recorded in the extension."
+          }
+        },
+        {
+          "name": "GET Filtered Audit Records (?limit=5&vulnerableOnly=true)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Returns array respecting limit query parameter\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.be.an(\"array\");",
+                  "    pm.expect(json.length).to.be.at.most(5);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/records?limit=5&vulnerableOnly=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["records"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5"
+                },
+                {
+                  "key": "vulnerableOnly",
+                  "value": "false"
+                }
+              ]
+            },
+            "description": "Demonstrates query parameter filtering on records: limit the number of entries returned and filter for vulnerable findings."
+          }
+        },
+        {
+          "name": "GET Single Audit Record Detail by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Record detail has full verdict and response metrics\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.recordId.toString()).to.eql(pm.collectionVariables.get(\"analyzedRecordId\"));",
+                  "    pm.expect(json.roleVerdicts).to.be.an(\"object\");",
+                  "    pm.expect(json.summary).to.be.a(\"string\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/records/{{analyzedRecordId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["records", "{{analyzedRecordId}}"]
+            },
+            "description": "Retrieves the complete audit breakdown for a specific transaction ID, including all role verdicts and similarity scores."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Negative & Boundary Testing",
+      "item": [
+        {
+          "name": "POST Create Role - Missing Name (400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Standardized error envelope returned\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(false);",
+                  "    pm.expect(json.statusCode).to.eql(400);",
+                  "    pm.expect(json.error).to.include(\"Role name is required\");",
+                  "    pm.expect(json.timestamp).to.be.a(\"number\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"headers\": \"Authorization: Bearer token\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["roles"]
+            },
+            "description": "Verifies that submitting an invalid role payload missing the mandatory 'name' parameter returns 400 with a structured error envelope."
+          }
+        },
+        {
+          "name": "POST Analyze - Missing URL & Host (400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK with success=false or 400\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(false);",
+                  "    pm.expect(json.message).to.include(\"url\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"GET\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/analyze",
+              "host": ["{{baseUrl}}"],
+              "path": ["analyze"]
+            },
+            "description": "Verifies error validation when no URL or Host header is provided."
+          }
+        },
+        {
+          "name": "GET Record Not Found (404 Not Found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Returns structured error envelope\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(false);",
+                  "    pm.expect(json.statusCode).to.eql(404);",
+                  "    pm.expect(json.error).to.include(\"not found\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/records/999999",
+              "host": ["{{baseUrl}}"],
+              "path": ["records", "999999"]
+            },
+            "description": "Verifies that requesting a non-existent record ID returns 404 with structured error envelope."
+          }
+        },
+        {
+          "name": "POST Method Not Allowed on Status (405)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 405 Method Not Allowed\", function () {",
+                  "    pm.response.to.have.status(405);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["status"]
+            },
+            "description": "Verifies that invalid HTTP verbs are correctly rejected with 405 Method Not Allowed."
+          }
+        }
+      ]
+    }
+  ]
+}
