@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- Suppress internal representation exposure for UI and model DTOs -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2" />
+    </Match>
+
+    <!-- Suppress newline formatting preference in console debug messages -->
+    <Match>
+        <Bug pattern="VA_FORMAT_STRING_USES_NEWLINE" />
+    </Match>
+
+    <!-- Suppress Swing viewer panel field initialization vs synchronized update warning -->
+    <Match>
+        <Class name="thorization.ui.components.RequestResponseViewerPanel" />
+        <Bug pattern="IS2_INCONSISTENT_SYNC" />
+    </Match>
+
+    <!-- Suppress unread / ignored return value on background task submission -->
+    <Match>
+        <Class name="thorization.bridge.AiBridgeController" />
+        <Method name="analyzeRequest" />
+        <Bug pattern="RV_RETURN_VALUE_IGNORED_BAD_PRACTICE" />
+    </Match>
+</FindBugsFilter>

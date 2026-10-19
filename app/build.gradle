@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id 'com.gradleup.shadow' version '8.3.6'
+    id 'com.github.spotbugs' version '6.1.7'
 }
 
 repositories {
@@ -55,3 +56,29 @@ shadowJar {
 
 tasks.assemble.dependsOn tasks.shadowJar
 tasks.build.dependsOn tasks.shadowJar
+
+spotbugs {
+    ignoreFailures = false
+    effort = 'max'
+    reportLevel = 'medium'
+    excludeFilter = file("${projectDir}/config/spotbugs/spotbugs-exclude.xml")
+}
+
+spotbugsMain {
+    reports {
+        html {
+            required = true
+        }
+        sarif {
+            required = true
+        }
+    }
+}
+
+spotbugsTest {
+    reports {
+        html {
+            required = true
+        }
+    }
+}

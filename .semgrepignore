@@ -1,0 +1,17 @@
+# Semgrep Ignore Rules for Thorization
+
+# Build outputs and cache
+build/
+**/build/
+.gradle/
+**/.gradle/
+*.class
+*.jar
+
+# Wrapper and tooling
+gradle/wrapper/gradle-wrapper.jar
+
+# Test data & artifacts
+tests/postman/
+**/test-results/
+**/reports/

@@ -1,0 +1,208 @@
+name: Thorization CI - Build, SAST & Verification
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  # -------------------------------------------------------------
+  # Job 1: Build & JUnit Unit Tests
+  # -------------------------------------------------------------
+  build-and-test:
+    name: Build & Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run JUnit Tests & Verification
+        run: ./gradlew check test --info
+
+      - name: Upload JUnit Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-test-reports
+          path: app/build/reports/tests/test/
+          if-no-files-found: ignore
+
+  # -------------------------------------------------------------
+  # Job 2: Static Application Security Testing (SAST) with Semgrep
+  # -------------------------------------------------------------
+  semgrep-sast:
+    name: Semgrep SAST & Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Semgrep Security Audit
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/owasp-top-ten
+            p/java
+            p/secrets
+          generateSarif: "1"
+
+      - name: Upload Semgrep SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        continue-on-error: true
+        with:
+          sarif_file: semgrep.sarif
+
+  # -------------------------------------------------------------
+  # Job 3: Memory Leak, Resource Leak & Bug Pattern Detection (SpotBugs)
+  # -------------------------------------------------------------
+  spotbugs-memory-leak-scan:
+    name: Memory & Resource Leak Detection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run SpotBugs Static Analysis
+        run: ./gradlew spotbugsMain
+
+      - name: Upload SpotBugs HTML Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spotbugs-analysis-report
+          path: app/build/reports/spotbugs/
+          if-no-files-found: ignore
+
+      - name: Upload SpotBugs SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        continue-on-error: true
+        with:
+          sarif_file: app/build/reports/spotbugs/main.sarif
+
+  # -------------------------------------------------------------
+  # Job 4: Headless AI Bridge API E2E Smoke Testing (Newman/Postman)
+  # -------------------------------------------------------------
+  bridge-api-e2e:
+    name: AI Bridge API E2E Smoke Tests
+    runs-on: ubuntu-latest
+    needs: [build-and-test]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Set up Node.js for Newman
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build Fat JAR
+        run: ./gradlew shadowJar
+
+      - name: Launch Headless AI Bridge Server
+        run: |
+          java -cp app/build/libs/Thorization.jar thorization.App --server --port 1337 > server.log 2>&1 &
+          echo "SERVER_PID=$!" >> $GITHUB_ENV
+
+      - name: Wait for AI Bridge Health Check
+        run: |
+          echo "Waiting for AI Bridge server at 127.0.0.1:1337..."
+          timeout 30 bash -c 'until curl -sf http://127.0.0.1:1337/api/status > /dev/null; do sleep 1; done'
+          curl -s http://127.0.0.1:1337/api/status
+
+      - name: Run Newman Automated E2E Test Suite
+        run: |
+          npx --yes newman run tests/postman/Thorization_AI_Agent_Bridge.postman_collection.json \
+            --bail \
+            --reporters cli,junit \
+            --reporter-junit-export newman-results.xml
+
+      - name: Stop Background Server
+        if: always()
+        run: |
+          if [ -n "$SERVER_PID" ]; then
+            kill "$SERVER_PID" || true
+          fi
+
+      - name: Upload Newman E2E Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: newman-e2e-report
+          path: newman-results.xml
+          if-no-files-found: ignore
+
+  # -------------------------------------------------------------
+  # Job 5: Package & Publish Fat JAR Build Artifact
+  # -------------------------------------------------------------
+  package-and-upload-artifact:
+    name: Package Fat JAR Artifact
+    runs-on: ubuntu-latest
+    needs: [build-and-test, spotbugs-memory-leak-scan, semgrep-sast, bridge-api-e2e]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build Production Fat JAR
+        run: ./gradlew shadowJar
+
+      - name: Compute SHA-256 Checksum
+        run: |
+          cd app/build/libs
+          sha256sum Thorization.jar > Thorization.jar.sha256
+          echo "Generated Checksum:"
+          cat Thorization.jar.sha256
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Thorization-Extension-v1.3.0
+          path: |
+            app/build/libs/Thorization.jar
+            app/build/libs/Thorization.jar.sha256
+          retention-days: 14
