@@ -1,179 +1,159 @@
-# ⚡ Thorization — Advanced Burp Suite Authorization & BOLA Testing Extension
+# Thorization
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Burp_Suite-Montoya_API-orange.svg" alt="Montoya API" />
-  <img src="https://img.shields.io/badge/Java-21-blue.svg" alt="Java 21" />
-  <img src="https://img.shields.io/badge/Gradle-9.x-02303A.svg" alt="Gradle" />
-  <img src="https://img.shields.io/badge/Version-1.3.2-brightgreen.svg" alt="Version 1.3.2" />
-  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License" />
-</p>
+Burp Suite extension for automated authorization, access control, and BOLA security testing built on the Montoya API.
 
-**Thorization** is a high-performance, modern authorization security testing extension for **Burp Suite** built natively on the **Montoya API**. Designed for professional penetration testers, bug bounty hunters, and security engineers, Thorization solves the critical limitations of legacy extensions like *Autorize* and *Auth Analyzer* by introducing non-destructive request interception, multi-role state matrixing, AI integration, and robust session persistence.
+[![Burp Suite Montoya API](https://img.shields.io/badge/Burp_Suite-Montoya_API-orange.svg)](https://portswigger.net/burp)
+[![Java 21](https://img.shields.io/badge/Java-21-blue.svg)](https://openjdk.org/)
+[![Gradle](https://img.shields.io/badge/Gradle-9.x-02303A.svg)](https://gradle.org/)
+[![Version](https://img.shields.io/badge/Version-1.3.2-brightgreen.svg)](CHANGELOG.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ---
 
-## 🚀 Key Features & Unique Selling Points (USPs)
+## Features
 
-### 1. 🛡️ Safe Request Interception & Drop Control
-* **Destructive Action Prevention**: Automatically drop or pause state-changing client requests (`POST`, `PUT`, `DELETE`, `PATCH`) in Burp Proxy before they reach the server, while safely replaying authorization checks for configured attacker roles.
-* **Flexible Interception Modes**:
-  * `Drop Original (Safe)`: Drops the victim socket request in Proxy and tests attacker roles in the background without modifying production/client state.
-  * `Replay First, Then Allow`: Executes attacker tests synchronously first, then allows the original client request to proceed.
-  * `Pass Through (Standard)`: Standard asynchronous background authorization testing.
-* **Granular Scope & Method Filters**: Toggle between *State-Changing Only* or *Drop ALL Requests (including GET)*.
+### Safe Request Interception
+Drop or pause original client requests before they hit the server, while testing attacker roles in the background. Prevents unwanted state modification on test targets.
+* **Drop Original**: Drops original request and executes configured role replays.
+* **Replay First, Then Allow**: Executes role replays synchronously before forwarding the original request.
+* **Pass Through**: Standard background replay without intercepting original traffic.
+* **Scope and Method Filters**: Target state-changing methods only or all HTTP methods.
 
-### 2. 👥 Dynamic Multi-Role Access Control Matrix
-* Configure **$N$ independent user roles** (e.g., *Admin*, *Manager*, *Doctor*, *Patient*, *Attacker*) with custom HTTP headers, authorization tokens, and session cookies.
-* **Sequential Role Duplication**: Duplicate existing roles with smart incremental naming (`User`, `User1`, `User2`) while preserving headers and cookie states.
-* **Dedicated Unauthenticated Replay**: Always verify if endpoints are accessible anonymously without authentication headers.
-* **Role Priority & Execution Sequencing**: Configure the exact sequential order in which roles are evaluated (`[▲ Up]`, `[▼ Down]`).
-* **Selective Re-Testing**: Re-test specific selected URLs or all captured requests for newly added or updated roles via an interactive checklist modal.
+### Multi-Role Evaluation Matrix
+* Evaluate requests across multiple user roles with custom headers, cookies, and tokens.
+* Dedicated unauthenticated replay check for every request.
+* Sequential role duplication with automatic index naming.
+* Configurable role execution order and selective re-testing of captured traffic.
 
-### 3. 💾 Full-Fidelity Session Persistence & Portability (Enhanced in v1.3.2)
-* **Native Request & Response Restoral**: Exported sessions (`.json`) preserve complete raw HTTP requests and responses. Importing a session immediately restores full interactive editors across Original Traffic, each Role Replay, and Unauthenticated tests.
-* **Zero-Bloat JSON Schema**: Redundant keys (such as `path`, `isStateChanging`, duplicate IDs, and empty execution traces) are pruned. Auto-generated sample pipelines are excluded unless customized by the user.
-* **Interactive Import Modes**:
-  * **Replace Mode**: Clears existing captured records for a clean workspace and loads imported data.
-  * **Append Mode**: Merges imported session records and unique roles into the active table without overwriting in-flight testing.
-* **Rock-Solid Backwards Compatibility**: Reads legacy Thorization session exports transparently without breaking older test archives.
-* **Thread-Safe UI Loading**: Safe asynchronous EDT row selection prevents `Row index out of range` exceptions even under active table search filters.
+### Session Persistence
+* Full JSON export and import preserving complete HTTP request and response payloads.
+* Native Burp request and response editors populate automatically upon import.
+* Pruned schema without redundant metadata or unedited sample templates.
+* Interactive import options: Replace existing session or Append to active table.
+* Backwards compatible with earlier session export schemas.
 
-### 4. 🤖 AI Agent Bridge (Local REST API Server)
-* **Embedded Local HTTP Server**: Runs directly on `127.0.0.1:1337/api/` with zero external dependencies.
-* **Autonomous LLM / MCP Integration**: Allows local AI agents, scripts, and automation tools to programmatically query audit records, manage user roles, and trigger authorization replays.
-* **Strict Security Isolation**: Bound exclusively to the loopback interface (`localhost`) with complete CORS header handling for safe browser and tool interactions.
+### Detection and Classification
+* **BYPASS**: Attacker role accessed authorized content or returned HTTP 200 with matching response.
+* **ENFORCED**: Server rejected attacker role with HTTP 401 or 403.
+* **MANUAL**: Status code matched but response body differed significantly, flagged for manual review.
 
-### 5. 🧩 Pipeline Studio & Block-Based State Chains (WIP)
-* **Visual Stateful BOLA Workflows**: Build complex multi-step authorization test chains visually:
-  * 🟦 **`RequestStep`**: Custom HTTP templates with dynamic `{{VAR_NAME}}` placeholders and role credential binding.
-  * 🟨 **`ConditionBranch` (IF / ELSE)**: Conditional branches evaluating HTTP status codes, body text, or regex matchers.
-  * 🖥️ **`PipelineConsole`**: Step-by-step execution trace and resolved variables inspection.
-* **Cross-Role Variable Extraction**: Extract IDs, CSRF tokens, or headers from Role A's responses and inject them into Role B's request payloads.
+### AI Agent Bridge
+Embedded REST API server running on `127.0.0.1:1337/api/` for external automation, LLM tools, and MCP agents to query audit records, manage roles, and trigger replays.
 
-### 6. 📊 Real-Time Analytics & Statistics Dashboard
-* Interactive dark/light-mode aware **JFreeChart Pie Chart** visualizing the live ratio of **Bypass**, **Enforced**, and **Manual** endpoints.
-* Metric summary cards for rapid executive reporting and pentest documentation.
+### Statistics Dashboard
+Live verdict distribution and summary metrics for reporting.
 
 ---
 
-## 🏛️ System Architecture
+## Architecture
 
 ```
 thorization/
-├── ThorizationExtension.java         # BurpExtension entry point (Montoya API registration)
-├── App.java                          # Standalone GUI preview launcher
-├── model/                            # Data Models & Entities
-│   ├── UserRole.java                 # Role entity (headers map, raw cookies, toggles)
-│   ├── AuthorizationCheckResult.java # Scan result per role (verdict, status, similarity, length)
-│   ├── AuditRecord.java              # Master transaction record (Source, Action, Trace)
-│   ├── Verdict.java                  # Enum: BYPASS (Red), ENFORCED (Green), INDETERMINABLE (Orange)
-│   ├── InterceptionMode.java         # Drop / Replay-First / Pass-Through modes
-│   ├── OriginalAction.java           # DROPPED / PASSED / HELD_THEN_PASSED
-│   ├── FilterConfig.java             # Scope, method, drop control, regex filters
-│   └── pipeline/                     # Pipeline Studio domain entities
-│       ├── Pipeline.java             # Pipeline scenario (steps, variables, sample flag)
-│       ├── RequestStep.java          # Template with {{VAR}} placeholder support
-│       ├── ExtractionRule.java       # Variable extraction rule (JSONPath, Regex, Header)
-│       └── ConditionBranch.java      # IF/ELSE conditional branch
-├── core/                             # Business Logic & Replay Engine
-│   ├── EngineController.java         # Coordinator (thread pool, sequencing, replace/append import)
-│   ├── HttpTrafficHandler.java       # Montoya ProxyRequestHandler & HttpHandler
-│   ├── ReplayEngine.java             # Multi-role asynchronous replay dispatcher
-│   ├── DetectionEngine.java          # Hybrid classification (Status, Length %, Regex)
-│   └── pipeline/                     # Pipeline execution engines
-│       ├── PipelineExecutor.java     # Asynchronous stateful chain executor
-│       ├── VariableResolver.java     # {{VAR}} placeholder string substitution
-│       └── JsonPathExtractor.java    # High-performance JSONPath & Regex parser
-├── bridge/                           # AI Agent Bridge REST API
-│   ├── AiBridgeServer.java           # Embedded localhost HTTP REST API (port 1337)
-│   └── handlers/                     # REST API route handlers (/records, /roles, /status)
-├── ui/                               # Java Swing Presentation Layer
-│   ├── MainTabbedPane.java           # Main Tab Container
-│   ├── RolesPanel.java               # Tab 1: Roles Manager & Interception Controls
-│   ├── TablePanel.java               # Tab 2: Interception & Analysis Table
-│   ├── PipelineStudioPanel.java      # Tab 3: Pipeline Studio (WIP)
-│   ├── StatisticsPanel.java          # Tab 4: Statistics Dashboard
-│   └── components/                   # Renderers, dialogs, viewers, table models
-├── export/                           # Persistence & Session State
-│   ├── SessionExporter.java          # Serializes pruned, clean session to JSON
-│   └── SessionImporter.java          # Deserializes session JSON with lazy reconstruction
-└── util/                             # Helpers
-    ├── DiffUtils.java                # Similarity & length difference calculation
-    └── HeaderUtils.java              # Header & Cookie parsing and injection
+├── ThorizationExtension.java         # Montoya API entry point
+├── App.java                          # Standalone GUI launcher
+├── model/                            # Domain entities
+│   ├── UserRole.java                 # Role credentials and state
+│   ├── AuthorizationCheckResult.java # Replay result, verdict, diff scores
+│   ├── AuditRecord.java              # Master audit entry and traffic data
+│   ├── Verdict.java                  # BYPASS, ENFORCED, INDETERMINABLE
+│   ├── InterceptionMode.java         # Interception strategies
+│   ├── OriginalAction.java           # Original traffic outcome
+│   ├── FilterConfig.java             # Scope, method, and regex rules
+│   └── pipeline/                     # Pipeline workflow entities
+├── core/                             # Business logic
+│   ├── EngineController.java         # State management and listener coordination
+│   ├── HttpTrafficHandler.java       # Proxy request and HTTP handler
+│   ├── ReplayEngine.java             # Asynchronous multi-role replay executor
+│   ├── DetectionEngine.java          # Verdict evaluation engine
+│   └── pipeline/                     # Workflow execution engine
+├── bridge/                           # Local REST API server
+│   ├── AiBridgeServer.java           # HTTP server on localhost port 1337
+│   └── handlers/                     # Endpoints for records, roles, status
+├── ui/                               # Swing presentation layer
+│   ├── MainTabbedPane.java           # Tab container
+│   ├── RolesPanel.java               # Roles configuration and filters
+│   ├── TablePanel.java               # Interception and analysis table
+│   ├── PipelineStudioPanel.java      # Pipeline studio interface
+│   ├── StatisticsPanel.java          # Charts and analytics
+│   └── components/                   # Renderers, dialogs, viewer panels
+├── export/                           # Persistence layer
+│   ├── SessionExporter.java          # JSON serialization
+│   └── SessionImporter.java          # JSON deserialization with message restoral
+└── util/                             # Utilities
+    ├── DiffUtils.java                # Similarity and diff algorithms
+    └── HeaderUtils.java              # Header and cookie injection
 ```
 
 ---
 
-## 📋 Prerequisites
+## Requirements
 
-* **Java Development Kit (JDK)**: Java 21 or newer (Temurin, OpenJDK, Oracle).
-* **Burp Suite**: Community or Professional Edition (`2023.x` or newer supporting Montoya API).
-* **Gradle**: Built-in `gradlew` wrapper included in the repository.
+* Java Development Kit 21 or newer
+* Burp Suite Community or Professional 2023.x or newer
+* Gradle wrapper included in repository
 
 ---
 
-## 🛠️ Build & Installation
+## Build and Installation
 
-### 1. Clone the Repository
+### 1. Clone Repository
 ```bash
 git clone https://github.com/ArdhenisAflah/Thorization.git
 cd Thorization
 ```
 
-### 2. Build the Bundled Extension (ShadowJar)
-Burp Suite runs extensions in isolated classloaders. Always build the bundled Fat-JAR using Gradle:
+### 2. Build Extension JAR
+Build the standalone Fat-JAR with all bundled dependencies:
 
-* **On Linux / macOS**:
-  ```bash
-  ./gradlew shadowJar
-  ```
-* **On Windows**:
-  ```powershell
-  .\gradlew.bat shadowJar
-  ```
+```bash
+# Linux / macOS
+./gradlew shadowJar
 
-The generated JAR will be located at:
+# Windows
+.\gradlew.bat shadowJar
+```
+
+Output file:
 ```text
-app/build/libs/Thorization.jar  (~5.3 MB)
+app/build/libs/Thorization.jar
 ```
 
 ### 3. Load into Burp Suite
-1. In Burp Suite, navigate to **Extensions** ➔ **Installed**.
-2. Click **Add**.
-3. Under **Extension Details**, choose:
-   - **Extension type**: `Java`
-   - **Extension file (.jar)**: `app/build/libs/Thorization.jar`
-4. Click **Next**. The extension will load, and a top-level **Thorization** tab will appear!
+1. Open Burp Suite.
+2. Navigate to **Extensions** > **Installed**.
+3. Click **Add**.
+4. Set **Extension type** to `Java`.
+5. Select `app/build/libs/Thorization.jar`.
+6. Click **Next** to initialize the extension.
 
 ---
 
-## 📖 Quick Start Guide
+## Usage
 
-### Step 1: Configure Your Roles (Tab 1: Roles Manager)
-1. Open **Thorization** ➔ **Roles Manager**.
-2. Type your attacker's role credentials directly into the form (e.g. `Role Name: Attacker B`, custom cookies, and auth headers).
+### 1. Configure Roles
+1. Open the **Thorization** tab > **Roles Manager**.
+2. Enter role name, cookie header, and custom authorization headers.
 3. Click **Save Role Changes**.
-4. Choose your **Interception Mode** (e.g., `Drop Original (Safe)` to prevent test traffic from altering backend application state).
+4. Select the desired interception mode under Safe Request Interception.
 
-### Step 2: Intercept & Replay (Tab 2: Interception & Analysis Table)
-1. In **Interception & Analysis Table**, toggle the power button to **ON**.
-2. Browse your target web application through Burp Proxy.
-3. Matching requests are evaluated against all configured roles and unauthenticated replay in real-time.
-4. Review color-coded verdicts:
-   - 🔴 **BYPASS**: Attacker role received authorized response content (`200 OK`).
-   - 🟢 **ENFORCED**: Server rejected attacker role (`401 Unauthorized` / `403 Forbidden`).
-   - 🟠 **MANUAL**: Status code matched but response body changed significantly, requiring tester review.
-5. Click any row to inspect original vs. replayed requests and responses side-by-side in the native viewer editors.
+### 2. Intercept and Analyze
+1. In **Interception & Analysis Table**, toggle the engine to **ON**.
+2. Route target traffic through Burp Proxy.
+3. Review verdicts in the table:
+   * Red: Bypass detected
+   * Green: Access enforced
+   * Orange: Manual review needed
+4. Select any row to inspect original and replayed requests and responses side-by-side.
 
-### Step 3: Export & Share Sessions
-1. Click **Export** to save captured requests, verdicts, and role settings to a `.json` file.
-2. Click **Import** at any time to reload a previous session. Choose **Replace** for a fresh view or **Append** to merge with current traffic.
+### 3. Session Management
+* **Export**: Save captured records, verdicts, and role matrices to JSON.
+* **Import**: Load previous session files. Choose **Replace** to clear current table or **Append** to merge with active records.
 
 ---
 
-## 🧪 Running Unit Tests
+## Tests
 
-Thorization includes a comprehensive unit test suite covering detection engines, drop controllers, session serialization, and thread safety:
+Execute the unit test suite:
 
 ```bash
 ./gradlew test
@@ -181,13 +161,6 @@ Thorization includes a comprehensive unit test suite covering detection engines,
 
 ---
 
-## 📄 License
+## License
 
-This project is licensed under the **MIT License**.
-See the [LICENSE](LICENSE) file for details.
-
----
-
-<p align="center">
-  Crafted with ⚡ for advanced API & Authorization Security Testing.
-</p>
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
