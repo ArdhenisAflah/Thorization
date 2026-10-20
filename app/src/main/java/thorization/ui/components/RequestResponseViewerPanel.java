@@ -6,12 +6,16 @@ import burp.api.montoya.http.message.responses.HttpResponse;
 import burp.api.montoya.ui.editor.EditorOptions;
 import burp.api.montoya.ui.editor.HttpRequestEditor;
 import burp.api.montoya.ui.editor.HttpResponseEditor;
+import thorization.ai.AiEvaluationResult;
+import thorization.ai.AiVerdict;
+import thorization.core.EngineController;
 import thorization.model.AuditRecord;
 import thorization.model.AuthorizationCheckResult;
 import thorization.model.UserRole;
 import thorization.model.Verdict;
 
 import javax.swing.BorderFactory;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -20,8 +24,12 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,12 +39,14 @@ import java.util.Map;
  * 1. Original traffic
  * 2. Dedicated individual tab for EACH configured Role (N users)
  * 3. Unauthenticated replay test
- * 4. Comprehensive audit notes and diff breakdown
+ * 4. AI Semantic Analysis (Frontier LLM Verdict & Detailed Reasoning)
+ * 5. Comprehensive audit notes and diff breakdown
  */
 public class RequestResponseViewerPanel extends JPanel {
 
     private final MontoyaApi api;
     private final JTabbedPane tabbedPane;
+    private EngineController controller;
 
     // Original Editors
     private JPanel originalTabPanel;
@@ -52,6 +62,16 @@ public class RequestResponseViewerPanel extends JPanel {
     private HttpResponseEditor unauthResponseEditor;
     private JLabel unauthStatusLabel;
 
+    // AI Semantic Analysis Tab
+    private JPanel aiTabPanel;
+    private JLabel aiVerdictBadgeLabel;
+    private JLabel aiModelTagLabel;
+    private JLabel aiCacheBadgeLabel;
+    private JLabel aiLatencyLabel;
+    private JButton reanalyzeBtn;
+    private JButton copyReasoningBtn;
+    private JTextArea aiReasoningArea;
+
     // Notes / Details Area
     private JPanel notesTabPanel;
     private JTextArea notesArea;
@@ -59,7 +79,12 @@ public class RequestResponseViewerPanel extends JPanel {
     private AuditRecord currentRecord;
 
     public RequestResponseViewerPanel(MontoyaApi api) {
+        this(api, null);
+    }
+
+    public RequestResponseViewerPanel(MontoyaApi api, EngineController controller) {
         this.api = api;
+        this.controller = controller;
         setLayout(new BorderLayout());
 
         this.tabbedPane = new JTabbedPane();
@@ -80,11 +105,16 @@ public class RequestResponseViewerPanel extends JPanel {
 
         initOriginalTab();
         initUnauthenticatedTab();
+        initAiTab();
         initNotesAndDiffTab();
 
         rebuildTabs(new ArrayList<>());
 
         add(tabbedPane, BorderLayout.CENTER);
+    }
+
+    public void setController(EngineController controller) {
+        this.controller = controller;
     }
 
     private void initOriginalTab() {
@@ -123,6 +153,116 @@ public class RequestResponseViewerPanel extends JPanel {
             unauthTabPanel.add(split, BorderLayout.CENTER);
         } else {
             unauthTabPanel.add(new JLabel(" Unauthenticated Editors available inside Burp Suite runtime."), BorderLayout.CENTER);
+        }
+    }
+
+    private void initAiTab() {
+        aiTabPanel = new JPanel(new BorderLayout());
+
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
+
+        JPanel leftStatusPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        aiVerdictBadgeLabel = new JLabel("  No Record Selected  ");
+        aiVerdictBadgeLabel.setFont(aiVerdictBadgeLabel.getFont().deriveFont(Font.BOLD, 13f));
+        aiVerdictBadgeLabel.setOpaque(true);
+        aiVerdictBadgeLabel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Color.LIGHT_GRAY, 1),
+                BorderFactory.createEmptyBorder(3, 8, 3, 8)
+        ));
+
+        aiModelTagLabel = new JLabel("Model: -");
+        aiModelTagLabel.setFont(aiModelTagLabel.getFont().deriveFont(Font.PLAIN, 12f));
+
+        aiCacheBadgeLabel = new JLabel("");
+        aiCacheBadgeLabel.setFont(aiCacheBadgeLabel.getFont().deriveFont(Font.BOLD, 12f));
+
+        aiLatencyLabel = new JLabel("");
+        aiLatencyLabel.setFont(aiLatencyLabel.getFont().deriveFont(Font.PLAIN, 12f));
+
+        leftStatusPanel.add(aiVerdictBadgeLabel);
+        leftStatusPanel.add(aiModelTagLabel);
+        leftStatusPanel.add(aiCacheBadgeLabel);
+        leftStatusPanel.add(aiLatencyLabel);
+
+        JPanel rightActionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        reanalyzeBtn = new JButton("Re-analyze with AI");
+        reanalyzeBtn.setEnabled(false);
+        reanalyzeBtn.addActionListener(e -> {
+            if (currentRecord != null && controller != null) {
+                reanalyzeBtn.setEnabled(false);
+                aiVerdictBadgeLabel.setText("  ⌛ PENDING  ");
+                aiVerdictBadgeLabel.setForeground(AiVerdict.PENDING.getForegroundColor());
+                aiVerdictBadgeLabel.setBackground(AiVerdict.PENDING.getBackgroundColor());
+                aiReasoningArea.setText("Triggering AI semantic re-analysis for record #" + currentRecord.getId() + "...");
+                controller.evaluateRecordWithAi(currentRecord, () -> {
+                    reanalyzeBtn.setEnabled(true);
+                    if (currentRecord != null) {
+                        displayAiResult(currentRecord.getAiResult());
+                    }
+                });
+            }
+        });
+
+        copyReasoningBtn = new JButton("Copy Reasoning");
+        copyReasoningBtn.addActionListener(e -> {
+            String text = aiReasoningArea.getText();
+            if (text != null && !text.isEmpty()) {
+                Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(text), null);
+            }
+        });
+
+        rightActionPanel.add(reanalyzeBtn);
+        rightActionPanel.add(copyReasoningBtn);
+
+        headerPanel.add(leftStatusPanel, BorderLayout.WEST);
+        headerPanel.add(rightActionPanel, BorderLayout.EAST);
+        aiTabPanel.add(headerPanel, BorderLayout.NORTH);
+
+        aiReasoningArea = new JTextArea();
+        aiReasoningArea.setEditable(false);
+        aiReasoningArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        aiReasoningArea.setText("Select an audit entry in the table above to view AI semantic access control analysis.");
+
+        JScrollPane scrollPane = new JScrollPane(aiReasoningArea);
+        aiTabPanel.add(scrollPane, BorderLayout.CENTER);
+    }
+
+    public void displayAiResult(AiEvaluationResult aiResult) {
+        if (aiVerdictBadgeLabel == null || aiReasoningArea == null) {
+            return;
+        }
+        if (aiResult != null) {
+            AiVerdict v = aiResult.getVerdict();
+            aiVerdictBadgeLabel.setText("  " + (v == AiVerdict.PENDING ? "⌛ PENDING" : v.getDisplayName()) + "  ");
+            aiVerdictBadgeLabel.setForeground(v.getForegroundColor());
+            aiVerdictBadgeLabel.setBackground(v.getBackgroundColor());
+            aiModelTagLabel.setText("Model: " + aiResult.getModel());
+            aiCacheBadgeLabel.setText(aiResult.isCached() ? "⚡ Cached" : "● Live Evaluation");
+            aiCacheBadgeLabel.setForeground(aiResult.isCached() ? new Color(112, 34, 194) : new Color(40, 167, 69));
+            aiLatencyLabel.setText(String.format("Latency: %d ms", aiResult.getExecutionTimeMs()));
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("=================================================================\n");
+            sb.append("  AI SEMANTIC ACCESS CONTROL EVALUATION\n");
+            sb.append("=================================================================\n");
+            sb.append(String.format("Verdict:    %s%n", v.getDisplayName()));
+            sb.append(String.format("Model:      %s%n", aiResult.getModel()));
+            sb.append(String.format("Latency:    %d ms (%s)%n", aiResult.getExecutionTimeMs(), aiResult.isCached() ? "Cached" : "Live Evaluation"));
+            sb.append(String.format("Timestamp:  %s%n%n", new Date(aiResult.getTimestamp())));
+            sb.append("--- REASONING & ANALYSIS ---\n");
+            sb.append(aiResult.getReasoning()).append("\n");
+
+            aiReasoningArea.setText(sb.toString());
+            aiReasoningArea.setCaretPosition(0);
+        } else {
+            aiVerdictBadgeLabel.setText("  UNTESTED  ");
+            aiVerdictBadgeLabel.setForeground(Color.GRAY);
+            aiVerdictBadgeLabel.setBackground(new Color(240, 240, 240));
+            aiModelTagLabel.setText("Model: -");
+            aiCacheBadgeLabel.setText("");
+            aiLatencyLabel.setText("");
+            aiReasoningArea.setText("No AI evaluation has been executed for this transaction.\nClick 'Re-analyze with AI' above to evaluate access control conformance.");
         }
     }
 
@@ -171,7 +311,10 @@ public class RequestResponseViewerPanel extends JPanel {
         // 3. Unauthenticated Replay
         tabbedPane.addTab("Unauthenticated Replay", unauthTabPanel);
 
-        // 4. Audit Details & Notes
+        // 4. AI Semantic Analysis
+        tabbedPane.addTab("AI Semantic Analysis", aiTabPanel);
+
+        // 5. Audit Details & Notes
         tabbedPane.addTab("Audit Details & Notes", notesTabPanel);
 
         // Restore selected tab if possible
@@ -231,6 +374,28 @@ public class RequestResponseViewerPanel extends JPanel {
         if (notesArea != null) {
             notesArea.setText("Select an entry in the table above to view audit analysis details and verdict explanations.");
         }
+
+        // 5. Reset AI Tab
+        if (aiVerdictBadgeLabel != null) {
+            aiVerdictBadgeLabel.setText("  No Record Selected  ");
+            aiVerdictBadgeLabel.setForeground(Color.GRAY);
+            aiVerdictBadgeLabel.setBackground(Color.LIGHT_GRAY);
+        }
+        if (aiModelTagLabel != null) {
+            aiModelTagLabel.setText("Model: -");
+        }
+        if (aiCacheBadgeLabel != null) {
+            aiCacheBadgeLabel.setText("");
+        }
+        if (aiLatencyLabel != null) {
+            aiLatencyLabel.setText("");
+        }
+        if (aiReasoningArea != null) {
+            aiReasoningArea.setText("Select an audit entry in the table above to view AI semantic access control analysis.");
+        }
+        if (reanalyzeBtn != null) {
+            reanalyzeBtn.setEnabled(false);
+        }
     }
 
     /**
@@ -242,6 +407,11 @@ public class RequestResponseViewerPanel extends JPanel {
             clearViewers();
             return;
         }
+
+        if (reanalyzeBtn != null) {
+            reanalyzeBtn.setEnabled(true);
+        }
+        displayAiResult(record.getAiResult());
 
         // 1. Display Original
         if (originalRequestEditor != null) {
@@ -450,9 +620,12 @@ public class RequestResponseViewerPanel extends JPanel {
                     } catch (Exception ignored) {}
                 }
                 Verdict v = result.getVerdict();
-                statusLabel.setText(String.format(" Role: %s | Verdict: %s | Status: %d | Len: %d bytes | Sim: %.2f | Time: %d ms",
+                String aiStr = result.getAiResult() != null && result.getAiResult().getVerdict() != null
+                        ? result.getAiResult().getVerdict().getDisplayName() : null;
+                statusLabel.setText(String.format(" Role: %s | Verdict: %s%s | Status: %d | Len: %d bytes | Sim: %.2f | Time: %d ms",
                         roleName,
                         v != null ? v.getDisplayName() : "-",
+                        aiStr != null ? " | AI: " + aiStr : "",
                         result.getStatusCode(),
                         result.getResponseLength(),
                         result.getSimilarityScore(),
@@ -482,4 +655,14 @@ public class RequestResponseViewerPanel extends JPanel {
             return containerPanel;
         }
     }
+
+    public JPanel getAiTabPanel() { return aiTabPanel; }
+    public JLabel getAiVerdictBadgeLabel() { return aiVerdictBadgeLabel; }
+    public JLabel getAiModelTagLabel() { return aiModelTagLabel; }
+    public JLabel getAiCacheBadgeLabel() { return aiCacheBadgeLabel; }
+    public JLabel getAiLatencyLabel() { return aiLatencyLabel; }
+    public JButton getReanalyzeBtn() { return reanalyzeBtn; }
+    public JButton getCopyReasoningBtn() { return copyReasoningBtn; }
+    public JTextArea getAiReasoningArea() { return aiReasoningArea; }
+    public JTabbedPane getTabbedPane() { return tabbedPane; }
 }

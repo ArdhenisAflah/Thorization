@@ -3,6 +3,8 @@ package thorization.model;
 import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.http.message.responses.HttpResponse;
+import thorization.ai.AiEvaluationResult;
+import thorization.ai.AiVerdict;
 import thorization.model.pipeline.StepExecutionRecord;
 
 import java.time.LocalDateTime;
@@ -41,6 +43,7 @@ public class AuditRecord {
 
     private Map<String, AuthorizationCheckResult> roleResults;
     private AuthorizationCheckResult unauthenticatedResult;
+    private AiEvaluationResult aiResult;
 
     // For JSON Export/Import
     private String serializedOriginalRequest;
@@ -294,5 +297,66 @@ public class AuditRecord {
 
     public void setSerializedOriginalResponse(String serializedOriginalResponse) {
         this.serializedOriginalResponse = serializedOriginalResponse;
+    }
+
+    public AiEvaluationResult getAiResult() {
+        return aiResult;
+    }
+
+    public void setAiResult(AiEvaluationResult aiResult) {
+        this.aiResult = aiResult;
+    }
+
+    public AiVerdict getOverallAiVerdict() {
+        boolean hasPending = false;
+        boolean hasError = false;
+        boolean hasInconclusive = false;
+        boolean hasAccessDenied = false;
+
+        if (roleResults != null) {
+            for (AuthorizationCheckResult r : roleResults.values()) {
+                if (r != null && r.getAiResult() != null && r.getAiResult().getVerdict() != null) {
+                    AiVerdict v = r.getAiResult().getVerdict();
+                    if (v == AiVerdict.VALIDATED_ACCESS) {
+                        return AiVerdict.VALIDATED_ACCESS;
+                    } else if (v == AiVerdict.PENDING) {
+                        hasPending = true;
+                    } else if (v == AiVerdict.ERROR) {
+                        hasError = true;
+                    } else if (v == AiVerdict.INCONCLUSIVE) {
+                        hasInconclusive = true;
+                    } else if (v == AiVerdict.ACCESS_DENIED) {
+                        hasAccessDenied = true;
+                    }
+                }
+            }
+        }
+
+        if (unauthenticatedResult != null && unauthenticatedResult.getAiResult() != null
+                && unauthenticatedResult.getAiResult().getVerdict() != null) {
+            AiVerdict v = unauthenticatedResult.getAiResult().getVerdict();
+            if (v == AiVerdict.VALIDATED_ACCESS) {
+                return AiVerdict.VALIDATED_ACCESS;
+            } else if (v == AiVerdict.PENDING) {
+                hasPending = true;
+            } else if (v == AiVerdict.ERROR) {
+                hasError = true;
+            } else if (v == AiVerdict.INCONCLUSIVE) {
+                hasInconclusive = true;
+            } else if (v == AiVerdict.ACCESS_DENIED) {
+                hasAccessDenied = true;
+            }
+        }
+
+        if (hasPending) return AiVerdict.PENDING;
+        if (hasError) return AiVerdict.ERROR;
+        if (hasInconclusive) return AiVerdict.INCONCLUSIVE;
+        if (hasAccessDenied) return AiVerdict.ACCESS_DENIED;
+
+        if (this.aiResult != null && this.aiResult.getVerdict() != null) {
+            return this.aiResult.getVerdict();
+        }
+
+        return null;
     }
 }

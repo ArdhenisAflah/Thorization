@@ -15,6 +15,8 @@ public class UserRole {
     private String rawHeaders;
     private String rawCookies;
     private Map<String, String> parsedHeaders;
+    private String rawParameters;
+    private final Map<String, String> parameterValues;
 
     public UserRole() {
         this.id = UUID.randomUUID().toString();
@@ -23,6 +25,8 @@ public class UserRole {
         this.rawHeaders = "";
         this.rawCookies = "";
         this.parsedHeaders = new LinkedHashMap<>();
+        this.rawParameters = "";
+        this.parameterValues = new LinkedHashMap<>();
     }
 
     public UserRole(String name, String rawHeaders, String rawCookies) {
@@ -32,6 +36,8 @@ public class UserRole {
         this.rawHeaders = rawHeaders != null ? rawHeaders : "";
         this.rawCookies = rawCookies != null ? rawCookies : "";
         this.parsedHeaders = new LinkedHashMap<>();
+        this.rawParameters = "";
+        this.parameterValues = new LinkedHashMap<>();
         parseHeaders();
     }
 
@@ -93,6 +99,63 @@ public class UserRole {
                 String headerValue = line.substring(colonIndex + 1).trim();
                 if (!headerName.isEmpty()) {
                     parsedHeaders.put(headerName, headerValue);
+                }
+            }
+        }
+    }
+
+    public synchronized String getRawParameters() {
+        return rawParameters;
+    }
+
+    public synchronized void setRawParameters(String rawParameters) {
+        this.rawParameters = rawParameters != null ? rawParameters : "";
+        parseParameters();
+    }
+
+    public synchronized Map<String, String> getParameterValues() {
+        return Collections.unmodifiableMap(new LinkedHashMap<>(parameterValues));
+    }
+
+    public synchronized String getParameterValue(String key) {
+        if (key == null) {
+            return null;
+        }
+        return parameterValues.get(key.trim());
+    }
+
+    public synchronized void setParameterValue(String key, String value) {
+        if (key != null && !key.trim().isEmpty()) {
+            if (value != null) {
+                parameterValues.put(key.trim(), value.trim());
+            } else {
+                parameterValues.remove(key.trim());
+            }
+        }
+    }
+
+    public synchronized void parseParameters() {
+        parameterValues.clear();
+        if (rawParameters == null || rawParameters.trim().isEmpty()) {
+            return;
+        }
+        String[] lines = rawParameters.split("\\r?\\n");
+        for (String line : lines) {
+            int eq = line.indexOf('=');
+            int colon = line.indexOf(':');
+            int sep = -1;
+            if (eq > 0 && colon > 0) {
+                sep = Math.min(eq, colon);
+            } else if (eq > 0) {
+                sep = eq;
+            } else if (colon > 0) {
+                sep = colon;
+            }
+            if (sep > 0) {
+                String k = line.substring(0, sep).trim();
+                String v = line.substring(sep + 1).trim();
+                if (!k.isEmpty()) {
+                    parameterValues.put(k, v);
                 }
             }
         }

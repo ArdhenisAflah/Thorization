@@ -15,6 +15,8 @@ import thorization.model.AuthorizationCheckResult;
 import thorization.model.FilterConfig;
 import thorization.model.OriginalAction;
 import thorization.model.Verdict;
+import thorization.ai.AiEvaluationResult;
+import thorization.ai.AiVerdict;
 
 import java.io.IOException;
 import java.net.URI;
@@ -391,5 +393,157 @@ class AiBridgeTest {
         // Stop server
         server.stop();
         assertFalse(server.isRunning());
+    }
+
+    @Test
+    void testAiAnalysisInSummaryAndDetailDtos() {
+        // Create Record 1 with AI Analysis Result
+        AuditRecord rec1 = new AuditRecord(101L, null, OriginalAction.PASSED, "Antigravity");
+        rec1.setUrl("https://api.example.com/users/123/profile");
+        rec1.setMethod("GET");
+        rec1.setOriginalStatusCode(200);
+        rec1.setOriginalResponseLength(250);
+
+        AiEvaluationResult topAi = AiEvaluationResult.success(AiVerdict.VALIDATED_ACCESS, "Critical IDOR bypass confirmed", "gpt-4o", 125L);
+        rec1.setAiResult(topAi);
+
+        AuthorizationCheckResult roleRes = new AuthorizationCheckResult(
+                "role-attacker",
+                "AttackerRole",
+                Verdict.BYPASS,
+                200,
+                250,
+                0.95,
+                45,
+                "Unauthorized access granted",
+                null,
+                null
+        );
+        roleRes.setAiResult(AiEvaluationResult.success(AiVerdict.VALIDATED_ACCESS, "Attacker accessed user 123 data", "gpt-4o", 110L));
+        rec1.addRoleResult("role-attacker", roleRes);
+        engineController.addRecord(rec1);
+
+        // Create Record 2 without AI Analysis Result
+        AuditRecord rec2 = new AuditRecord(102L, null, OriginalAction.PASSED, "Antigravity");
+        rec2.setUrl("https://api.example.com/public/ping");
+        rec2.setMethod("GET");
+        rec2.setOriginalStatusCode(200);
+        rec2.setOriginalResponseLength(10);
+        engineController.addRecord(rec2);
+
+        // 1. Verify getRecords() summary DTOs
+        List<AuditRecordSummaryDto> summaries = bridgeController.getRecords();
+        assertEquals(2, summaries.size());
+
+        AuditRecordSummaryDto summary1 = summaries.stream().filter(s -> s.getId() == 101L).findFirst().orElse(null);
+        assertNotNull(summary1);
+        assertNotNull(summary1.getAiAnalysis(), "rec1 must have aiAnalysis key-value pair populated");
+        assertEquals("VALIDATED_ACCESS", summary1.getAiAnalysis().getVerdict());
+        assertEquals("Critical IDOR bypass confirmed", summary1.getAiAnalysis().getReasoning());
+        assertEquals("gpt-4o", summary1.getAiAnalysis().getModel());
+        assertEquals(125L, summary1.getAiAnalysis().getExecutionTimeMs());
+        assertNotNull(summary1.getAiAnalysis().getRoleVerdicts());
+        assertEquals("VALIDATED_ACCESS", summary1.getAiAnalysis().getRoleVerdicts().get("AttackerRole"));
+
+        String json1 = gson.toJson(summary1);
+        assertTrue(json1.contains("\"aiAnalysis\":"), "JSON serialization of rec1 must include aiAnalysis");
+        assertTrue(json1.contains("\"verdict\":\"VALIDATED_ACCESS\""));
+        assertTrue(json1.contains("\"reasoning\":\"Critical IDOR bypass confirmed\""));
+
+        AuditRecordSummaryDto summary2 = summaries.stream().filter(s -> s.getId() == 102L).findFirst().orElse(null);
+        assertNotNull(summary2);
+        assertNull(summary2.getAiAnalysis(), "rec2 without AI analysis must have null aiAnalysis");
+        String json2 = gson.toJson(summary2);
+        assertFalse(json2.contains("\"aiAnalysis\":"), "JSON serialization of rec2 must NOT contain aiAnalysis");
+
+        // 2. Verify getRecordDetail() DTO
+        AnalyzeResponseDto detail1 = bridgeController.getRecordDetail(101L);
+        assertNotNull(detail1);
+        assertNotNull(detail1.getAiAnalysis());
+        assertEquals("VALIDATED_ACCESS", detail1.getAiAnalysis().getVerdict());
+
+        AnalyzeResponseDto.RoleVerdictDto roleVerdictDto = detail1.getRoleVerdicts().get("AttackerRole");
+        assertNotNull(roleVerdictDto);
+        assertEquals("VALIDATED_ACCESS", roleVerdictDto.getAiVerdict());
+        assertEquals("Attacker accessed user 123 data", roleVerdictDto.getAiReason());
+
+        String detailJson = gson.toJson(detail1);
+        assertTrue(detailJson.contains("\"aiVerdict\":\"VALIDATED_ACCESS\""));
+        assertTrue(detailJson.contains("\"aiReason\":\"Attacker accessed user 123 data\""));
+    }
+
+    @Test
+    void testAiAnalyzedOnlyFilterQuery() {
+        AuditRecord rec1 = new AuditRecord(201L, null, OriginalAction.PASSED, "Antigravity");
+        rec1.setUrl("https://api.example.com/orders");
+        rec1.setMethod("GET");
+        rec1.setAiResult(AiEvaluationResult.success(AiVerdict.ACCESS_DENIED, "Access denied properly", "deepseek-r1", 80L));
+        engineController.addRecord(rec1);
+
+        AuditRecord rec2 = new AuditRecord(202L, null, OriginalAction.PASSED, "Antigravity");
+        rec2.setUrl("https://api.example.com/health");
+        rec2.setMethod("GET");
+        engineController.addRecord(rec2);
+
+        // Filter aiAnalyzedOnly = true
+        List<AuditRecordSummaryDto> aiOnly = bridgeController.getRecords(null, null, true);
+        assertEquals(1, aiOnly.size());
+        assertEquals(201L, aiOnly.get(0).getId());
+
+        // Filter aiAnalyzedOnly = false
+        List<AuditRecordSummaryDto> all = bridgeController.getRecords(null, null, false);
+        assertEquals(2, all.size());
+    }
+
+    @Test
+    void testHttpServerAiRecordsEndpoints() throws IOException, InterruptedException {
+        AuditRecord rec = new AuditRecord(301L, null, OriginalAction.PASSED, "Antigravity");
+        rec.setUrl("https://api.example.com/admin/settings");
+        rec.setMethod("GET");
+        rec.setAiResult(AiEvaluationResult.success(AiVerdict.VALIDATED_ACCESS, "Admin settings accessible", "gpt-4o", 95L));
+        engineController.addRecord(rec);
+
+        AuditRecord recNoAi = new AuditRecord(302L, null, OriginalAction.PASSED, "Antigravity");
+        recNoAi.setUrl("https://api.example.com/status");
+        recNoAi.setMethod("GET");
+        engineController.addRecord(recNoAi);
+
+        server = new AiBridgeServer(bridgeController, testPort + 1);
+        server.start();
+
+        HttpClient client = HttpClient.newHttpClient();
+        String base = server.getBaseUrl();
+
+        // 1. GET /api/records?aiAnalyzedOnly=true
+        HttpRequest getAiOnlyReq = HttpRequest.newBuilder()
+                .uri(URI.create(base + "records?aiAnalyzedOnly=true"))
+                .GET()
+                .build();
+        HttpResponse<String> aiOnlyResp = client.send(getAiOnlyReq, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, aiOnlyResp.statusCode());
+        assertTrue(aiOnlyResp.body().contains("admin/settings"));
+        assertFalse(aiOnlyResp.body().contains("/status"));
+        assertTrue(aiOnlyResp.body().contains("\"aiAnalysis\""));
+
+        // 2. GET /api/records/301
+        HttpRequest getDetailReq = HttpRequest.newBuilder()
+                .uri(URI.create(base + "records/301"))
+                .GET()
+                .build();
+        HttpResponse<String> detailResp = client.send(getDetailReq, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, detailResp.statusCode());
+        assertTrue(detailResp.body().contains("\"aiAnalysis\""));
+        assertTrue(detailResp.body().contains("Admin settings accessible"));
+
+        // 3. POST /api/records/301/ai-audit
+        HttpRequest postAuditReq = HttpRequest.newBuilder()
+                .uri(URI.create(base + "records/301/ai-audit"))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build();
+        HttpResponse<String> auditResp = client.send(postAuditReq, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, auditResp.statusCode());
+        assertTrue(auditResp.body().contains("\"aiAnalysis\""));
+
+        server.stop();
     }
 }

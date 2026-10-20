@@ -79,10 +79,21 @@ public class AuditTableModel extends AbstractTableModel {
         return records.size();
     }
 
+    private boolean showAiColumn = false;
+
+    public boolean isShowAiColumn() {
+        return showAiColumn;
+    }
+
+    public void setShowAiColumn(boolean showAiColumn) {
+        this.showAiColumn = showAiColumn;
+        fireTableStructureChanged();
+    }
+
     @Override
     public int getColumnCount() {
-        // Base columns (8) + 1 per Role + 1 for Unauthenticated
-        return BASE_COLUMNS.length + roles.size() + 1;
+        // Base columns (8) + 1 per Role + 1 for Unauthenticated + (optional 1 for AI Verdict)
+        return BASE_COLUMNS.length + roles.size() + 1 + (showAiColumn ? 1 : 0);
     }
 
     @Override
@@ -94,7 +105,10 @@ public class AuditTableModel extends AbstractTableModel {
         if (roleIndex < roles.size()) {
             return roles.get(roleIndex).getName();
         }
-        return "Unauthenticated";
+        if (roleIndex == roles.size()) {
+            return "Unauthenticated";
+        }
+        return "AI Verdict";
     }
 
     @Override
@@ -131,9 +145,14 @@ public class AuditTableModel extends AbstractTableModel {
                         return res.getVerdict();
                     }
                     return role.isEnabled() ? "Pending..." : "Disabled";
-                } else {
+                } else if (roleIndex == roles.size()) {
                     AuthorizationCheckResult unauth = record.getUnauthenticatedResult();
-                    return unauth != null ? unauth.getVerdict() : "Disabled";
+                    if (unauth != null) {
+                        return unauth.getVerdict();
+                    }
+                    return "Disabled";
+                } else {
+                    return record.getOverallAiVerdict();
                 }
         }
     }

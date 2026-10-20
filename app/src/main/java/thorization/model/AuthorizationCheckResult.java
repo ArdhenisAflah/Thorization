@@ -19,6 +19,7 @@ public class AuthorizationCheckResult {
     private transient HttpResponse response;
     private String serializedRequest;
     private String serializedResponse;
+    private thorization.ai.AiEvaluationResult aiResult;
 
     public AuthorizationCheckResult() {
     }
@@ -159,6 +160,14 @@ public class AuthorizationCheckResult {
 
     public void setSerializedResponse(String serializedResponse) {
         this.serializedResponse = serializedResponse;
+    }
+
+    public thorization.ai.AiEvaluationResult getAiResult() {
+        return aiResult;
+    }
+
+    public void setAiResult(thorization.ai.AiEvaluationResult aiResult) {
+        this.aiResult = aiResult;
     }
 }
 

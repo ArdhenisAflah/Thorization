@@ -4,6 +4,7 @@ import thorization.model.AuditRecord;
 import thorization.model.FilterConfig;
 import thorization.model.UserRole;
 import thorization.model.pipeline.Pipeline;
+import thorization.model.substitution.ParameterSubstitutionRule;
 
 import java.util.List;
 
@@ -19,4 +20,7 @@ public interface EngineListener {
     void onEngineStateChanged(boolean enabled);
     void onFilterConfigChanged(FilterConfig config);
     void onPipelinesChanged(List<Pipeline> pipelines);
+    default void onSubstitutionRulesChanged(List<ParameterSubstitutionRule> rules) {
+        // Default no-op for backward compatibility
+    }
 }

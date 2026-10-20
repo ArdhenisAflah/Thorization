@@ -17,6 +17,7 @@ public class MainTabbedPane extends JPanel {
     private final TablePanel tablePanel;
     private final PipelineStudioPanel pipelineStudioPanel;
     private final StatisticsPanel statisticsPanel;
+    private final AiSettingsPanel aiSettingsPanel;
 
     public MainTabbedPane(MontoyaApi api, EngineController controller) {
         setLayout(new BorderLayout());
@@ -39,6 +40,10 @@ public class MainTabbedPane extends JPanel {
         // Tab 4: Statistics Dashboard
         statisticsPanel = new StatisticsPanel(controller);
         tabbedPane.addTab("Statistics Dashboard", statisticsPanel);
+
+        // Tab 5: AI Configuration
+        aiSettingsPanel = new AiSettingsPanel(controller);
+        tabbedPane.addTab("AI Configuration", aiSettingsPanel);
 
         // Default to Tab 2 (Analysis Table)
         tabbedPane.setSelectedIndex(1);
@@ -64,5 +69,9 @@ public class MainTabbedPane extends JPanel {
 
     public StatisticsPanel getStatisticsPanel() {
         return statisticsPanel;
+    }
+
+    public AiSettingsPanel getAiSettingsPanel() {
+        return aiSettingsPanel;
     }
 }

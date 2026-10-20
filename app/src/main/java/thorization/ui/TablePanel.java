@@ -16,6 +16,8 @@ import thorization.ui.components.RetestRolesDialog;
 import thorization.ui.components.VerdictCellRenderer;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -44,13 +46,25 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.GraphicsEnvironment;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+
+import burp.api.montoya.http.message.requests.HttpRequest;
+import thorization.model.AuthorizationCheckResult;
+import thorization.report.CsvReportGenerator;
+import thorization.report.HtmlReportGenerator;
+import thorization.util.CurlUtils;
 
 /**
  * Tab 2: Primary dashboard for real-time authorization testing, request table,
@@ -68,6 +82,11 @@ public class TablePanel extends JPanel implements EngineListener {
     private JCheckBox dropAllQuickCheck;
     private JLabel countLabel;
     private JTextField searchFilterField;
+    private JButton htmlReportBtn;
+    private JButton csvExportBtn;
+    private JButton exportBtn;
+    private JButton importBtn;
+    private JPopupMenu contextMenu;
 
     private AuditTableModel tableModel;
     private JTable auditTable;
@@ -102,13 +121,18 @@ public class TablePanel extends JPanel implements EngineListener {
     }
 
     private JPanel createTopToolbar() {
-        JPanel toolbar = new JPanel(new GridBagLayout());
-        toolbar.setBorder(BorderFactory.createEmptyBorder(0, 0, 6, 0));
+        JPanel toolbar = new JPanel();
+        toolbar.setLayout(new BoxLayout(toolbar, BoxLayout.Y_AXIS));
+        toolbar.setBorder(BorderFactory.createEmptyBorder(4, 6, 6, 6));
 
-        // Left controls: ON/OFF toggle, status indicator, Drop Mode Dropdown, Drop All Checkbox, Clear
-        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        // -----------------------------------------------------------------
+        // Row 1: Engine Controls, Safe Drop Mode, Clear | Record Count
+        // -----------------------------------------------------------------
+        JPanel row1 = new JPanel(new BorderLayout(8, 0));
+
+        JPanel row1Left = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
         powerToggleBtn = new JToggleButton("OFF");
-        powerToggleBtn.setPreferredSize(new Dimension(60, 26));
+        powerToggleBtn.setPreferredSize(new Dimension(65, 26));
         powerToggleBtn.setFont(powerToggleBtn.getFont().deriveFont(Font.BOLD, 12f));
         powerToggleBtn.setBackground(new Color(230, 230, 230));
         powerToggleBtn.setToolTipText("Toggle Thorization traffic interception and auto-replay");
@@ -137,54 +161,66 @@ public class TablePanel extends JPanel implements EngineListener {
         clearBtn.setToolTipText("Clear all captured records in the table");
         clearBtn.addActionListener(e -> controller.clearRecords());
 
-        leftPanel.add(powerToggleBtn);
-        leftPanel.add(statusBadgeLabel);
-        leftPanel.add(new JLabel("Mode:"));
-        leftPanel.add(modeDropdown);
-        leftPanel.add(dropAllQuickCheck);
-        leftPanel.add(clearBtn);
+        row1Left.add(powerToggleBtn);
+        row1Left.add(statusBadgeLabel);
+        row1Left.add(new JLabel("Mode:"));
+        row1Left.add(modeDropdown);
+        row1Left.add(dropAllQuickCheck);
+        row1Left.add(clearBtn);
 
-        // Right controls: Search Filter, Export/Import, Count
-        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        rightPanel.add(new JLabel("Search:"));
-        searchFilterField = new JTextField(12);
-        searchFilterField.setPreferredSize(new Dimension(120, 26));
+        JPanel row1Right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
+        countLabel = new JLabel("Total: 0");
+        countLabel.setFont(countLabel.getFont().deriveFont(Font.BOLD, 12f));
+        row1Right.add(countLabel);
+
+        row1.add(row1Left, BorderLayout.WEST);
+        row1.add(row1Right, BorderLayout.EAST);
+
+        // -----------------------------------------------------------------
+        // Row 2: Search Filter | Reporting & Session Tools (HTML/CSV/Export/Import)
+        // -----------------------------------------------------------------
+        JPanel row2 = new JPanel(new BorderLayout(8, 0));
+
+        JPanel row2Left = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+        row2Left.add(new JLabel("Search:"));
+        searchFilterField = new JTextField(15);
+        searchFilterField.setPreferredSize(new Dimension(160, 26));
         searchFilterField.setToolTipText("Filter term matching URL, method, status, or tool (string)");
         searchFilterField.getDocument().addDocumentListener(new DocumentListener() {
             @Override public void insertUpdate(DocumentEvent e) { applyFilter(); }
             @Override public void removeUpdate(DocumentEvent e) { applyFilter(); }
             @Override public void changedUpdate(DocumentEvent e) { applyFilter(); }
         });
-        rightPanel.add(searchFilterField);
+        row2Left.add(searchFilterField);
 
-        JButton exportBtn = new JButton("Export");
+        JPanel row2Right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
+        htmlReportBtn = new JButton("HTML Report");
+        htmlReportBtn.setToolTipText("Generate standalone interactive offline HTML audit report");
+        htmlReportBtn.addActionListener(e -> onExportHtmlReport());
+
+        csvExportBtn = new JButton("CSV Export");
+        csvExportBtn.setToolTipText("Export audit records and role verdicts to RFC 4180 CSV");
+        csvExportBtn.addActionListener(e -> onExportCsvReport());
+
+        exportBtn = new JButton("Export");
         exportBtn.setToolTipText("Export session records and settings (.json)");
         exportBtn.addActionListener(e -> onExportSession());
 
-        JButton importBtn = new JButton("Import");
+        importBtn = new JButton("Import");
         importBtn.setToolTipText("Import session records and settings (.json)");
         importBtn.addActionListener(e -> onImportSession());
 
-        countLabel = new JLabel("Total: 0");
-        countLabel.setFont(countLabel.getFont().deriveFont(Font.BOLD, 12f));
+        row2Right.add(htmlReportBtn);
+        row2Right.add(csvExportBtn);
+        row2Right.add(exportBtn);
+        row2Right.add(importBtn);
 
-        rightPanel.add(exportBtn);
-        rightPanel.add(importBtn);
-        rightPanel.add(countLabel);
+        row2.add(row2Left, BorderLayout.WEST);
+        row2.add(row2Right, BorderLayout.EAST);
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.weightx = 1.0;
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.NONE;
-        toolbar.add(leftPanel, gbc);
-
-        gbc.gridx = 1;
-        gbc.weightx = 0.0;
-        gbc.anchor = GridBagConstraints.EAST;
-        gbc.fill = GridBagConstraints.NONE;
-        toolbar.add(rightPanel, gbc);
+        toolbar.add(row1);
+        toolbar.add(Box.createVerticalStrut(3));
+        toolbar.add(row2);
 
         return toolbar;
     }
@@ -227,13 +263,25 @@ public class TablePanel extends JPanel implements EngineListener {
             }
         });
 
-        // Right-Click Context Menu for re-testing and item removal
-        JPopupMenu contextMenu = new JPopupMenu();
+        // Right-Click Context Menu for re-testing, cURL copy, reporting and item removal
+        contextMenu = new JPopupMenu();
         JMenuItem retestSelectedMenuItem = new JMenuItem("Re-Test Selected Request(s)...");
         retestSelectedMenuItem.addActionListener(e -> onRetestSelected());
 
         JMenuItem retestAllMenuItem = new JMenuItem("Re-Test All Captured Requests...");
         retestAllMenuItem.addActionListener(e -> onRetestAll());
+
+        JMenuItem aiAuditMenuItem = new JMenuItem("AI Audit Selected Rows");
+        aiAuditMenuItem.addActionListener(e -> onAiAuditSelectedRows());
+
+        JMenuItem copyCurlMenuItem = new JMenuItem("Copy as cURL");
+        copyCurlMenuItem.addActionListener(e -> onCopyAsCurl());
+
+        JMenuItem exportHtmlMenuItem = new JMenuItem("Export as HTML...");
+        exportHtmlMenuItem.addActionListener(e -> onExportSelectedHtml());
+
+        JMenuItem exportCsvMenuItem = new JMenuItem("Export as CSV...");
+        exportCsvMenuItem.addActionListener(e -> onExportSelectedCsv());
 
         JMenuItem removeMenuItem = new JMenuItem("Remove Selected Item(s)");
         removeMenuItem.addActionListener(e -> onRemoveSelectedRecords());
@@ -243,6 +291,12 @@ public class TablePanel extends JPanel implements EngineListener {
 
         contextMenu.add(retestSelectedMenuItem);
         contextMenu.add(retestAllMenuItem);
+        contextMenu.add(aiAuditMenuItem);
+        contextMenu.addSeparator();
+        contextMenu.add(copyCurlMenuItem);
+        contextMenu.addSeparator();
+        contextMenu.add(exportHtmlMenuItem);
+        contextMenu.add(exportCsvMenuItem);
         contextMenu.addSeparator();
         contextMenu.add(removeMenuItem);
         contextMenu.add(clearMenuItem);
@@ -272,7 +326,7 @@ public class TablePanel extends JPanel implements EngineListener {
         });
 
         JScrollPane tableScroll = new JScrollPane(auditTable);
-        viewerPanel = new RequestResponseViewerPanel(api);
+        viewerPanel = new RequestResponseViewerPanel(api, controller);
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, tableScroll, viewerPanel);
         splitPane.setResizeWeight(0.4);
@@ -357,6 +411,7 @@ public class TablePanel extends JPanel implements EngineListener {
                 JOptionPane.showMessageDialog(this, "No roles or unauthenticated test selected. Re-test cancelled.", "Warning", JOptionPane.WARNING_MESSAGE);
                 return;
             }
+            ensureAiColumnVisible();
             controller.retestRecords(selectedRecords, chosenRoles, testUnauth);
         }
     }
@@ -384,7 +439,34 @@ public class TablePanel extends JPanel implements EngineListener {
                 JOptionPane.showMessageDialog(this, "No roles or unauthenticated test selected. Re-test cancelled.", "Warning", JOptionPane.WARNING_MESSAGE);
                 return;
             }
+            ensureAiColumnVisible();
             controller.retestRecords(allRecords, chosenRoles, testUnauth);
+        }
+    }
+
+    public void ensureAiColumnVisible() {
+        if (!tableModel.isShowAiColumn()) {
+            tableModel.setShowAiColumn(true);
+            updateCellRenderers();
+        }
+    }
+
+    private void onAiAuditSelectedRows() {
+        List<AuditRecord> selectedRecords = getSelectedRecords();
+        if (selectedRecords.isEmpty()) {
+            if (!java.awt.GraphicsEnvironment.isHeadless()) {
+                JOptionPane.showMessageDialog(this,
+                        "Please select one or more items from the table for AI audit.",
+                        "No Items Selected",
+                        JOptionPane.INFORMATION_MESSAGE);
+            }
+            return;
+        }
+
+        ensureAiColumnVisible();
+
+        for (AuditRecord record : selectedRecords) {
+            controller.evaluateRecordWithAi(record, null);
         }
     }
 
@@ -407,6 +489,152 @@ public class TablePanel extends JPanel implements EngineListener {
             controller.removeRecords(recordsToRemove);
         }
     }
+
+    private void onCopyAsCurl() {
+        List<AuditRecord> selected = getSelectedRecords();
+        if (selected.isEmpty()) {
+            if (!GraphicsEnvironment.isHeadless()) {
+                JOptionPane.showMessageDialog(this, "Please select an item from the table to copy as cURL.", "No Item Selected", JOptionPane.INFORMATION_MESSAGE);
+            }
+            return;
+        }
+        AuditRecord record = selected.get(0);
+        HttpRequest reqToCopy = null;
+
+        int viewCol = auditTable.getSelectedColumn();
+        if (viewCol >= 8) {
+            int roleIndex = viewCol - 8;
+            List<UserRole> currentRoles = controller.getRoles();
+            if (roleIndex < currentRoles.size()) {
+                UserRole r = currentRoles.get(roleIndex);
+                if (r != null && record.getRoleResults() != null) {
+                    AuthorizationCheckResult res = record.getRoleResults().get(r.getId());
+                    if (res != null && res.getRequest() != null) {
+                        reqToCopy = res.getRequest();
+                    }
+                }
+            } else if (roleIndex == currentRoles.size()) {
+                AuthorizationCheckResult unauth = record.getUnauthenticatedResult();
+                if (unauth != null && unauth.getRequest() != null) {
+                    reqToCopy = unauth.getRequest();
+                }
+            }
+        }
+        if (reqToCopy == null) {
+            reqToCopy = record.getOriginalRequest();
+        }
+
+        if (reqToCopy == null) {
+            if (!GraphicsEnvironment.isHeadless()) {
+                JOptionPane.showMessageDialog(this, "No HTTP request data available for the selected transaction.", "Copy Failed", JOptionPane.WARNING_MESSAGE);
+            }
+            return;
+        }
+
+        String curl = CurlUtils.toCurlCommand(reqToCopy);
+        if (!GraphicsEnvironment.isHeadless()) {
+            StringSelection selection = new StringSelection(curl);
+            Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, selection);
+        }
+        if (api != null && api.logging() != null) {
+            api.logging().logToOutput("[Thorization] Copied cURL command to clipboard.");
+        }
+    }
+
+    private void onExportHtmlReport() {
+        exportHtmlWithRecords(controller.getRecords());
+    }
+
+    private void onExportSelectedHtml() {
+        List<AuditRecord> selected = getSelectedRecords();
+        exportHtmlWithRecords(selected.isEmpty() ? controller.getRecords() : selected);
+    }
+
+    private void exportHtmlWithRecords(List<AuditRecord> records) {
+        if (records == null || records.isEmpty()) {
+            if (!GraphicsEnvironment.isHeadless()) {
+                JOptionPane.showMessageDialog(this, "Table is empty. No audit records available to export.", "No Records", JOptionPane.INFORMATION_MESSAGE);
+            }
+            return;
+        }
+        if (GraphicsEnvironment.isHeadless()) {
+            return;
+        }
+
+        String defaultName = "thorization-report-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")) + ".html";
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Export Thorization Audit Report (HTML)");
+        chooser.setFileFilter(new FileNameExtensionFilter("HTML Files (*.html)", "html"));
+        chooser.setSelectedFile(new File(defaultName));
+
+        if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
+            if (!file.getName().toLowerCase(Locale.ROOT).endsWith(".html")) {
+                file = new File(file.getAbsolutePath() + ".html");
+            }
+            try {
+                HtmlReportGenerator.generateReport(file, records, controller.getRoles());
+                JOptionPane.showMessageDialog(this, "HTML report exported successfully to:\n" + file.getAbsolutePath(), "Export Complete", JOptionPane.INFORMATION_MESSAGE);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Failed to export HTML report: " + ex.getMessage(), "Export Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private void onExportCsvReport() {
+        exportCsvWithRecords(controller.getRecords());
+    }
+
+    private void onExportSelectedCsv() {
+        List<AuditRecord> selected = getSelectedRecords();
+        exportCsvWithRecords(selected.isEmpty() ? controller.getRecords() : selected);
+    }
+
+    private void exportCsvWithRecords(List<AuditRecord> records) {
+        if (records == null || records.isEmpty()) {
+            if (!GraphicsEnvironment.isHeadless()) {
+                JOptionPane.showMessageDialog(this, "Table is empty. No audit records available to export.", "No Records", JOptionPane.INFORMATION_MESSAGE);
+            }
+            return;
+        }
+        if (GraphicsEnvironment.isHeadless()) {
+            return;
+        }
+
+        String defaultName = "thorization-report-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")) + ".csv";
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Export Thorization Audit Report (CSV)");
+        chooser.setFileFilter(new FileNameExtensionFilter("CSV Files (*.csv)", "csv"));
+        chooser.setSelectedFile(new File(defaultName));
+
+        if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
+            if (!file.getName().toLowerCase(Locale.ROOT).endsWith(".csv")) {
+                file = new File(file.getAbsolutePath() + ".csv");
+            }
+            try {
+                CsvReportGenerator.exportCsv(file, records, controller.getRoles());
+                JOptionPane.showMessageDialog(this, "CSV report exported successfully to:\n" + file.getAbsolutePath(), "Export Complete", JOptionPane.INFORMATION_MESSAGE);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Failed to export CSV report: " + ex.getMessage(), "Export Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    // Testing and programmatic accessors
+    public JButton getHtmlReportBtn() { return htmlReportBtn; }
+    public JButton getCsvExportBtn() { return csvExportBtn; }
+    public JButton getExportBtn() { return exportBtn; }
+    public JButton getImportBtn() { return importBtn; }
+    public JTextField getSearchFilterField() { return searchFilterField; }
+    public JLabel getCountLabel() { return countLabel; }
+    public JPopupMenu getContextMenu() { return contextMenu; }
+    public JTable getAuditTable() { return auditTable; }
+    public AuditTableModel getTableModel() { return tableModel; }
+    public void triggerCopyAsCurl() { onCopyAsCurl(); }
+    public void triggerExportHtmlReport() { onExportHtmlReport(); }
+    public void triggerExportCsvReport() { onExportCsvReport(); }
+    public void triggerAiAuditSelectedRows() { onAiAuditSelectedRows(); }
 
     private void onExportSession() {
         JFileChooser chooser = new JFileChooser();
@@ -489,12 +717,16 @@ public class TablePanel extends JPanel implements EngineListener {
 
     @Override
     public void onAuditRecordAdded(AuditRecord record) {
+        if (record != null && (record.getAiResult() != null || record.getOverallAiVerdict() != null)) {
+            ensureAiColumnVisible();
+        }
         tableModel.addRecord(record);
         countLabel.setText("Total: " + tableModel.getRowCount());
     }
 
     @Override
     public void onAuditRecordUpdated(AuditRecord record) {
+        ensureAiColumnVisible();
         tableModel.updateRecord(record);
         int viewRow = auditTable.getSelectedRow();
         if (viewRow >= 0) {

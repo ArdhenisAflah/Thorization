@@ -34,7 +34,13 @@ public class VerdictCellRenderer extends DefaultTableCellRenderer {
                                                    int row, int column) {
         JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
-        if (value instanceof Verdict verdict) {
+        if (value instanceof thorization.ai.AiVerdict aiVerdict) {
+            label.setText(aiVerdict == thorization.ai.AiVerdict.PENDING ? "⌛ PENDING" : aiVerdict.getDisplayName());
+            if (!isSelected) {
+                label.setForeground(aiVerdict.getForegroundColor());
+                label.setBackground(aiVerdict.getBackgroundColor());
+            }
+        } else if (value instanceof Verdict verdict) {
             label.setText(verdict.getDisplayName());
             if (!isSelected) {
                 label.setForeground(verdict.getForegroundColor());
@@ -51,7 +57,23 @@ public class VerdictCellRenderer extends DefaultTableCellRenderer {
             label.setText(text);
 
             if (!isSelected) {
-                if (text.startsWith("Pipeline") || text.contains("⚡")) {
+                if ("Pending...".equalsIgnoreCase(text) || "PENDING".equalsIgnoreCase(text) || text.contains("PENDING")) {
+                    label.setText("⌛ PENDING");
+                    label.setForeground(new Color(0, 123, 255));
+                    label.setBackground(new Color(235, 245, 255));
+                } else if ("VALIDATED_ACCESS".equalsIgnoreCase(text)) {
+                    label.setForeground(new Color(220, 53, 69));
+                    label.setBackground(new Color(255, 235, 238));
+                } else if ("ACCESS_DENIED".equalsIgnoreCase(text)) {
+                    label.setForeground(new Color(40, 167, 69));
+                    label.setBackground(new Color(232, 245, 233));
+                } else if ("INCONCLUSIVE".equalsIgnoreCase(text)) {
+                    label.setForeground(new Color(255, 152, 0));
+                    label.setBackground(new Color(255, 243, 224));
+                } else if ("ERROR".equalsIgnoreCase(text)) {
+                    label.setForeground(new Color(178, 34, 34));
+                    label.setBackground(new Color(255, 228, 225));
+                } else if (text.startsWith("Pipeline") || text.contains("⚡")) {
                     label.setText("⚡ " + text);
                     label.setForeground(PIPELINE_FG);
                     label.setBackground(PIPELINE_BG);

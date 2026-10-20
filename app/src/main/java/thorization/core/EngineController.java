@@ -4,6 +4,8 @@ import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.http.message.responses.HttpResponse;
+import thorization.ai.AiConfig;
+import thorization.ai.AiSemanticEngine;
 import thorization.core.pipeline.PipelineExecutor;
 import thorization.model.AuditRecord;
 import thorization.model.AuthorizationCheckResult;
@@ -15,6 +17,7 @@ import thorization.model.Verdict;
 import thorization.model.pipeline.Pipeline;
 import thorization.model.pipeline.PipelineExecutionResult;
 import thorization.model.pipeline.StepExecutionRecord;
+import thorization.model.substitution.ParameterSubstitutionRule;
 
 import javax.swing.SwingUtilities;
 import java.util.ArrayList;
@@ -37,10 +40,13 @@ public class EngineController {
     private final ReplayEngine replayEngine;
     private final PipelineExecutor pipelineExecutor;
     private final FilterConfig filterConfig;
+    private final AiSemanticEngine aiSemanticEngine;
+    private volatile AiConfig aiConfig;
 
     private final List<UserRole> roles = new CopyOnWriteArrayList<>();
     private final List<AuditRecord> records = new CopyOnWriteArrayList<>();
     private final List<Pipeline> pipelines = new CopyOnWriteArrayList<>();
+    private final List<ParameterSubstitutionRule> substitutionRules = new CopyOnWriteArrayList<>();
     private final List<EngineListener> listeners = new CopyOnWriteArrayList<>();
 
     private final ExecutorService executorService;
@@ -54,6 +60,8 @@ public class EngineController {
         this.pipelineExecutor = new PipelineExecutor(api, detectionEngine);
         this.filterConfig = new FilterConfig();
         this.executorService = Executors.newFixedThreadPool(4);
+        this.aiConfig = new AiConfig();
+        this.aiSemanticEngine = new AiSemanticEngine(this, this.aiConfig);
     }
 
     public MontoyaApi getApi() {
@@ -388,8 +396,13 @@ public class EngineController {
 
         Runnable auditTask = () -> {
             try {
-                replayEngine.executeAudit(record, new ArrayList<>(roles), filterConfig.isTestUnauthenticated());
+                List<UserRole> rolesSnapshot = new ArrayList<>(roles);
+                List<ParameterSubstitutionRule> rulesSnapshot = new ArrayList<>(substitutionRules);
+                replayEngine.executeAudit(record, rolesSnapshot, filterConfig.isTestUnauthenticated(), rulesSnapshot);
                 notifyRecordUpdated(record);
+                if (aiConfig != null && aiConfig.isAutoAnalyzeEnabled() && aiSemanticEngine != null) {
+                    aiSemanticEngine.evaluateRecordAsync(record, rolesSnapshot, null);
+                }
             } catch (Exception e) {
                 if (api != null && api.logging() != null) {
                     api.logging().logToError("Error during background audit: " + e.getMessage());
@@ -407,11 +420,15 @@ public class EngineController {
     public void retestRecord(AuditRecord record, List<UserRole> targetRoles, boolean testUnauth) {
         if (record == null) return;
         List<UserRole> activeRoles = targetRoles != null ? targetRoles : new ArrayList<>(roles);
+        List<ParameterSubstitutionRule> rulesSnapshot = new ArrayList<>(substitutionRules);
 
         executorService.submit(() -> {
             try {
-                replayEngine.executeAudit(record, activeRoles, testUnauth);
+                replayEngine.executeAudit(record, activeRoles, testUnauth, rulesSnapshot);
                 notifyRecordUpdated(record);
+                if (aiConfig != null && aiConfig.isAutoAnalyzeEnabled() && aiSemanticEngine != null) {
+                    aiSemanticEngine.evaluateRecordAsync(record, activeRoles, null);
+                }
             } catch (Exception e) {
                 if (api != null && api.logging() != null) {
                     api.logging().logToError("Error during record re-test: " + e.getMessage());
@@ -423,11 +440,15 @@ public class EngineController {
     public void retestRecords(List<AuditRecord> targetRecords, List<UserRole> targetRoles, boolean testUnauth) {
         if (targetRecords == null) return;
         List<UserRole> activeRoles = targetRoles != null ? targetRoles : new ArrayList<>(roles);
+        List<ParameterSubstitutionRule> rulesSnapshot = new ArrayList<>(substitutionRules);
         for (AuditRecord record : targetRecords) {
             executorService.submit(() -> {
                 try {
-                    replayEngine.executeAudit(record, activeRoles, testUnauth);
+                    replayEngine.executeAudit(record, activeRoles, testUnauth, rulesSnapshot);
                     notifyRecordUpdated(record);
+                    if (aiConfig != null && aiConfig.isAutoAnalyzeEnabled() && aiSemanticEngine != null) {
+                        aiSemanticEngine.evaluateRecordAsync(record, activeRoles, null);
+                    }
                 } catch (Exception e) {
                     if (api != null && api.logging() != null) {
                         api.logging().logToError("Error during records re-test: " + e.getMessage());
@@ -439,11 +460,15 @@ public class EngineController {
 
     public void retestAll(List<UserRole> targetRoles, boolean testUnauth) {
         List<UserRole> activeRoles = targetRoles != null ? targetRoles : new ArrayList<>(roles);
+        List<ParameterSubstitutionRule> rulesSnapshot = new ArrayList<>(substitutionRules);
         for (AuditRecord record : records) {
             executorService.submit(() -> {
                 try {
-                    replayEngine.executeAudit(record, activeRoles, testUnauth);
+                    replayEngine.executeAudit(record, activeRoles, testUnauth, rulesSnapshot);
                     notifyRecordUpdated(record);
+                    if (aiConfig != null && aiConfig.isAutoAnalyzeEnabled() && aiSemanticEngine != null) {
+                        aiSemanticEngine.evaluateRecordAsync(record, activeRoles, null);
+                    }
                 } catch (Exception e) {
                     if (api != null && api.logging() != null) {
                         api.logging().logToError("Error during retest-all: " + e.getMessage());
@@ -588,9 +613,76 @@ public class EngineController {
         });
     }
 
+    public AiSemanticEngine getAiSemanticEngine() {
+        return aiSemanticEngine;
+    }
+
+    public AiConfig getAiConfig() {
+        return aiConfig;
+    }
+
+    public void setAiConfig(AiConfig aiConfig) {
+        this.aiConfig = aiConfig != null ? aiConfig : new AiConfig();
+        if (this.aiSemanticEngine != null) {
+            this.aiSemanticEngine.setConfig(this.aiConfig);
+        }
+    }
+
+    public void evaluateRecordWithAi(AuditRecord record, Runnable onComplete) {
+        if (record == null || aiSemanticEngine == null) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+        aiSemanticEngine.evaluateRecordAsync(record, new ArrayList<>(roles), onComplete);
+    }
+
+    // --- Substitution Rules Management ---
+
+    public List<ParameterSubstitutionRule> getSubstitutionRules() {
+        return Collections.unmodifiableList(new ArrayList<>(substitutionRules));
+    }
+
+    public void setSubstitutionRules(List<ParameterSubstitutionRule> rules) {
+        substitutionRules.clear();
+        if (rules != null) {
+            substitutionRules.addAll(rules);
+        }
+        notifySubstitutionRulesChanged();
+    }
+
+    public void addSubstitutionRule(ParameterSubstitutionRule rule) {
+        if (rule != null) {
+            substitutionRules.add(rule);
+            notifySubstitutionRulesChanged();
+        }
+    }
+
+    public void removeSubstitutionRule(String ruleId) {
+        if (ruleId != null) {
+            substitutionRules.removeIf(r -> ruleId.equals(r.getId()));
+            notifySubstitutionRulesChanged();
+        }
+    }
+
+    private void notifySubstitutionRulesChanged() {
+        List<ParameterSubstitutionRule> snapshot = getSubstitutionRules();
+        for (EngineListener listener : listeners) {
+            try {
+                listener.onSubstitutionRulesChanged(snapshot);
+            } catch (Exception ignored) {
+                // Ignore listener exceptions
+            }
+        }
+    }
+
     public void shutdown() {
         if (executorService != null && !executorService.isShutdown()) {
             executorService.shutdownNow();
+        }
+        if (aiSemanticEngine != null) {
+            aiSemanticEngine.shutdown();
         }
     }
 }

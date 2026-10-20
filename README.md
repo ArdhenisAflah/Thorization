@@ -10,7 +10,52 @@ Burp Suite extension for automated authorization, access control, and BOLA secur
 
 ---
 
-## Features
+## Problems We Address
+
+Traditional access control and authorization testing (BOLA, IDOR, BFLA, and privilege escalation) poses several workflow challenges:
+
+1. **Heuristic Inaccuracy with Modern APIs**: Traditional byte-length or status-code differentials often misclassify responses. Modern web services frequently return `HTTP 200 OK` with JSON-level error payloads (`{"error": "Unauthorized"}`), empty tenant collections (`{"items": []}`), or reflected authorization tokens that skew byte counts.
+2. **Accidental State Modification**: Testing state-changing methods (`POST`, `PUT`, `DELETE`, `PATCH`) while crawling target applications can cause unintended updates or deletes on upstream databases.
+3. **Repetitive Reproduction Overhead**: Verifying flagged bypasses often requires security researchers to manually craft cURL commands with swapped cookies and tokens.
+4. **UI Overcrowding & Visibility Stalls**: Dense security testing extensions often suffer from clipped controls or frozen pending states on varied screen sizes when executing concurrent audits.
+
+---
+
+## Visual Preview & Key Workflows
+
+### 1. Interception & Analysis Table
+The central workbench provides a responsive, non-clipping 2-tier toolbar, live substring filtering, per-role and unauthenticated verdict matrices, and an integrated split-pane inspector displaying original, role-replayed, and unauthenticated traffic side-by-side.
+
+![Interception and Analysis Table](docs/images/interception-table-analysis.png)
+
+* **Organized Engine & I/O Controls**: Top tier handles engine power, idle/active status, interception modes, and record counts; bottom tier provides search filtering, HTML/CSV report generation, and session JSON export/import.
+* **Independent Column Classification**: Role verdicts, unauthenticated checks, and AI evaluations operate independently so network anomalies in one action do not corrupt other audit results.
+* **Contextual Actions**: Right-click menu allows instant cURL generation, targeted re-testing of specific roles, and selective AI audits.
+
+---
+
+### 2. Real-Time Statistics & Analytics Dashboard
+Visualizes test distribution and real-time verdict metrics across all tested transactions and user roles.
+
+![Statistics Dashboard](docs/images/statistics-dashboard.png)
+
+* **Key Metrics**: Real-time count and percentage breakdown for `Bypass`, `Enforced`, and `Manual Review` outcomes.
+* **Distribution Analytics**: Interactive pie chart reflecting authorization boundary coverage during live assessments.
+
+---
+
+### 3. In-GUI AI Semantic Analysis Engine
+Integrates directly with any OpenAI-compatible LLM endpoint (local Ollama, DeepSeek, Qwen, Gemini, OpenCode Go) to analyze response differentials with structured AppSec explainability.
+
+![AI Configuration Panel](docs/images/ai-configuration-panel.png)
+
+* **Custom HTTP Header Injection**: Configure provider-specific headers (e.g. `x-opencode-session`, custom auth tokens, organization routing headers) directly in the GUI.
+* **Explainable Verdicts**: Classifies differentials into `VALIDATED_ACCESS`, `ACCESS_DENIED`, or `INCONCLUSIVE` with executive reasoning and developer remediation guidance.
+* **Asynchronous Virtual Threads & Caching**: SHA-256 differential hashing and virtual-thread dispatch prevent Burp Suite UI lockups while auditing multiple records.
+
+---
+
+## Core Capabilities
 
 ### Safe Request Interception
 Drop or pause original client requests before they hit the server, while testing attacker roles in the background. Prevents unwanted state modification on test targets.
@@ -25,23 +70,18 @@ Drop or pause original client requests before they hit the server, while testing
 * Sequential role duplication with automatic index naming.
 * Configurable role execution order and selective re-testing of captured traffic.
 
+### Executive Pentest & Bug Bounty Reporting
+* **Offline HTML Reports**: Self-contained, styled HTML report with metrics cards, filterable findings, side-by-side request/response diff viewer, and copyable cURL reproduction snippets.
+* **RFC 4180 CSV Export**: Structured spreadsheet export detailing HTTP transactions, status codes, role verdicts, diff scores, and AI evaluations.
+
 ### Session Persistence
 * Full JSON export and import preserving complete HTTP request and response payloads.
 * Native Burp request and response editors populate automatically upon import.
-* Pruned schema without redundant metadata or unedited sample templates.
 * Interactive import options: Replace existing session or Append to active table.
 * Backwards compatible with earlier session export schemas.
 
-### Detection and Classification
-* **BYPASS**: Attacker role accessed authorized content or returned HTTP 200 with matching response.
-* **ENFORCED**: Server rejected attacker role with HTTP 401 or 403.
-* **MANUAL**: Status code matched but response body differed significantly, flagged for manual review.
-
 ### AI Agent Bridge
 Embedded REST API on `http://127.0.0.1:1337/api/` enabling external LLM agents, security automation scripts, and Model Context Protocol servers to query audit records, configure roles, and dispatch authorization checks.
-
-### Statistics Dashboard
-Live verdict distribution and summary metrics for reporting.
 
 ---
 

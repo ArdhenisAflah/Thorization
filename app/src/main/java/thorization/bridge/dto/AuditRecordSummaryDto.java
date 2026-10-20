@@ -22,6 +22,54 @@ public class AuditRecordSummaryDto {
     private boolean vulnerabilityDetected;
     private List<String> vulnerableRoles = new ArrayList<>();
     private Map<String, String> verdicts = new LinkedHashMap<>();
+    private AiAnalysisSummaryDto aiAnalysis;
+
+    public static class AiAnalysisSummaryDto {
+        private String verdict;
+        private String reasoning;
+        private String model;
+        private long executionTimeMs;
+        private long timestamp;
+        private boolean cached;
+        private Map<String, String> roleVerdicts = new LinkedHashMap<>();
+
+        public AiAnalysisSummaryDto() {}
+
+        public AiAnalysisSummaryDto(String verdict, String reasoning, String model,
+                                    long executionTimeMs, long timestamp, boolean cached,
+                                    Map<String, String> roleVerdicts) {
+            this.verdict = verdict;
+            this.reasoning = reasoning;
+            this.model = model;
+            this.executionTimeMs = executionTimeMs;
+            this.timestamp = timestamp;
+            this.cached = cached;
+            if (roleVerdicts != null) {
+                this.roleVerdicts.putAll(roleVerdicts);
+            }
+        }
+
+        public String getVerdict() { return verdict; }
+        public void setVerdict(String verdict) { this.verdict = verdict; }
+
+        public String getReasoning() { return reasoning; }
+        public void setReasoning(String reasoning) { this.reasoning = reasoning; }
+
+        public String getModel() { return model; }
+        public void setModel(String model) { this.model = model; }
+
+        public long getExecutionTimeMs() { return executionTimeMs; }
+        public void setExecutionTimeMs(long executionTimeMs) { this.executionTimeMs = executionTimeMs; }
+
+        public long getTimestamp() { return timestamp; }
+        public void setTimestamp(long timestamp) { this.timestamp = timestamp; }
+
+        public boolean isCached() { return cached; }
+        public void setCached(boolean cached) { this.cached = cached; }
+
+        public Map<String, String> getRoleVerdicts() { return roleVerdicts; }
+        public void setRoleVerdicts(Map<String, String> roleVerdicts) { this.roleVerdicts = roleVerdicts; }
+    }
 
     public AuditRecordSummaryDto() {}
 
@@ -60,4 +108,7 @@ public class AuditRecordSummaryDto {
 
     public Map<String, String> getVerdicts() { return verdicts; }
     public void setVerdicts(Map<String, String> verdicts) { this.verdicts = verdicts; }
+
+    public AiAnalysisSummaryDto getAiAnalysis() { return aiAnalysis; }
+    public void setAiAnalysis(AiAnalysisSummaryDto aiAnalysis) { this.aiAnalysis = aiAnalysis; }
 }

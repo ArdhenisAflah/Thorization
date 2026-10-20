@@ -18,3 +18,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Agent artifacts
+.agents/
+ORIGINAL_REQUEST.md

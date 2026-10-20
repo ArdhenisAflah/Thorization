@@ -38,11 +38,19 @@ public class AnalyzeResponseDto {
         private double similarityScore;
         private long responseTimeMs;
         private String note;
+        private String aiVerdict;
+        private String aiReason;
 
         public RoleVerdictDto() {}
 
         public RoleVerdictDto(String roleId, String roleName, String verdict, int statusCode,
                               int responseLength, double similarityScore, long responseTimeMs, String note) {
+            this(roleId, roleName, verdict, statusCode, responseLength, similarityScore, responseTimeMs, note, null, null);
+        }
+
+        public RoleVerdictDto(String roleId, String roleName, String verdict, int statusCode,
+                              int responseLength, double similarityScore, long responseTimeMs, String note,
+                              String aiVerdict, String aiReason) {
             this.roleId = roleId;
             this.roleName = roleName;
             this.verdict = verdict;
@@ -51,6 +59,8 @@ public class AnalyzeResponseDto {
             this.similarityScore = similarityScore;
             this.responseTimeMs = responseTimeMs;
             this.note = note;
+            this.aiVerdict = aiVerdict;
+            this.aiReason = aiReason;
         }
 
         public String getRoleId() { return roleId; }
@@ -61,6 +71,10 @@ public class AnalyzeResponseDto {
         public double getSimilarityScore() { return similarityScore; }
         public long getResponseTimeMs() { return responseTimeMs; }
         public String getNote() { return note; }
+        public String getAiVerdict() { return aiVerdict; }
+        public void setAiVerdict(String aiVerdict) { this.aiVerdict = aiVerdict; }
+        public String getAiReason() { return aiReason; }
+        public void setAiReason(String aiReason) { this.aiReason = aiReason; }
     }
 
     public AnalyzeResponseDto() {}
@@ -110,4 +124,9 @@ public class AnalyzeResponseDto {
     public void addRoleVerdict(String key, RoleVerdictDto dto) {
         this.roleVerdicts.put(key, dto);
     }
+
+    private AuditRecordSummaryDto.AiAnalysisSummaryDto aiAnalysis;
+
+    public AuditRecordSummaryDto.AiAnalysisSummaryDto getAiAnalysis() { return aiAnalysis; }
+    public void setAiAnalysis(AuditRecordSummaryDto.AiAnalysisSummaryDto aiAnalysis) { this.aiAnalysis = aiAnalysis; }
 }

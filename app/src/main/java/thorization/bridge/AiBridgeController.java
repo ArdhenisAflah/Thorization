@@ -137,13 +137,18 @@ public class AiBridgeController {
     // --- Audit Records ---
 
     public List<AuditRecordSummaryDto> getRecords() {
-        return getRecords(null, null);
+        return getRecords(null, null, null);
     }
 
     public List<AuditRecordSummaryDto> getRecords(Integer limit, Boolean vulnerableOnly) {
+        return getRecords(limit, vulnerableOnly, null);
+    }
+
+    public List<AuditRecordSummaryDto> getRecords(Integer limit, Boolean vulnerableOnly, Boolean aiAnalyzedOnly) {
         return engineController.getRecords().stream()
                 .map(this::toSummaryDto)
                 .filter(dto -> vulnerableOnly == null || !vulnerableOnly || dto.isVulnerabilityDetected())
+                .filter(dto -> aiAnalyzedOnly == null || !aiAnalyzedOnly || dto.getAiAnalysis() != null)
                 .limit(limit != null && limit > 0 ? limit : Long.MAX_VALUE)
                 .collect(Collectors.toList());
     }
@@ -158,6 +163,26 @@ public class AiBridgeController {
             return null;
         }
         return buildAnalyzeResponseFromRecord(record, "Record retrieved successfully", true);
+    }
+
+    public AnalyzeResponseDto auditRecordWithAi(long id) {
+        AuditRecord record = engineController.getRecords().stream()
+                .filter(r -> r.getId() == id)
+                .findFirst()
+                .orElse(null);
+
+        if (record == null) {
+            return null;
+        }
+
+        java.util.concurrent.CompletableFuture<Void> future = new java.util.concurrent.CompletableFuture<>();
+        engineController.evaluateRecordWithAi(record, () -> future.complete(null));
+        try {
+            int timeoutSec = engineController.getAiConfig() != null ? engineController.getAiConfig().getTimeoutSeconds() : 30;
+            future.get(Math.max(5, timeoutSec + 5), java.util.concurrent.TimeUnit.SECONDS);
+        } catch (Exception ignored) {
+        }
+        return getRecordDetail(id);
     }
 
     // --- Request Analysis ---
@@ -485,6 +510,8 @@ public class AiBridgeController {
         if (record.getRoleResults() != null) {
             for (Map.Entry<String, AuthorizationCheckResult> entry : record.getRoleResults().entrySet()) {
                 AuthorizationCheckResult r = entry.getValue();
+                String aiV = r.getAiResult() != null && r.getAiResult().getVerdict() != null ? r.getAiResult().getVerdict().name() : null;
+                String aiR = r.getAiResult() != null ? r.getAiResult().getReasoning() : null;
                 AnalyzeResponseDto.RoleVerdictDto vDto = new AnalyzeResponseDto.RoleVerdictDto(
                         r.getRoleId(),
                         r.getRoleName(),
@@ -493,7 +520,9 @@ public class AiBridgeController {
                         r.getResponseLength(),
                         r.getSimilarityScore(),
                         r.getExecutionTimeMs(),
-                        r.getNotes()
+                        r.getNotes(),
+                        aiV,
+                        aiR
                 );
                 String key = r.getRoleName() != null && !r.getRoleName().trim().isEmpty() ? r.getRoleName() : entry.getKey();
                 res.addRoleVerdict(key, vDto);
@@ -507,6 +536,8 @@ public class AiBridgeController {
 
         if (record.getUnauthenticatedResult() != null) {
             AuthorizationCheckResult u = record.getUnauthenticatedResult();
+            String uAiV = u.getAiResult() != null && u.getAiResult().getVerdict() != null ? u.getAiResult().getVerdict().name() : null;
+            String uAiR = u.getAiResult() != null ? u.getAiResult().getReasoning() : null;
             AnalyzeResponseDto.RoleVerdictDto uDto = new AnalyzeResponseDto.RoleVerdictDto(
                     "unauthenticated",
                     "Unauthenticated",
@@ -515,7 +546,9 @@ public class AiBridgeController {
                     u.getResponseLength(),
                     u.getSimilarityScore(),
                     u.getExecutionTimeMs(),
-                    u.getNotes()
+                    u.getNotes(),
+                    uAiV,
+                    uAiR
             );
             res.addRoleVerdict("unauthenticated", uDto);
 
@@ -527,6 +560,7 @@ public class AiBridgeController {
 
         res.setVulnerabilityDetected(vulnDetected);
         res.setVulnerableRoles(vulnRoles);
+        res.setAiAnalysis(extractAiAnalysisSummary(record));
 
         if (vulnDetected) {
             res.setSummary("VULNERABILITY DETECTED: Authorization bypass identified for role(s): " + vulnRoles + ". Access control failed.");
@@ -597,7 +631,47 @@ public class AiBridgeController {
         dto.setVerdicts(verdictMap);
         dto.setVulnerabilityDetected(vulnDetected);
         dto.setVulnerableRoles(vulnRoles);
+        dto.setAiAnalysis(extractAiAnalysisSummary(r));
         return dto;
+    }
+
+    private AuditRecordSummaryDto.AiAnalysisSummaryDto extractAiAnalysisSummary(AuditRecord r) {
+        if (r == null) return null;
+        thorization.ai.AiEvaluationResult topAi = r.getAiResult();
+        Map<String, String> roleAiVerdicts = new LinkedHashMap<>();
+
+        if (r.getRoleResults() != null) {
+            for (Map.Entry<String, AuthorizationCheckResult> entry : r.getRoleResults().entrySet()) {
+                AuthorizationCheckResult res = entry.getValue();
+                if (res != null && res.getAiResult() != null && res.getAiResult().getVerdict() != null) {
+                    String roleName = res.getRoleName() != null && !res.getRoleName().trim().isEmpty()
+                            ? res.getRoleName()
+                            : entry.getKey();
+                    roleAiVerdicts.put(roleName, res.getAiResult().getVerdict().name());
+                }
+            }
+        }
+        if (r.getUnauthenticatedResult() != null && r.getUnauthenticatedResult().getAiResult() != null
+                && r.getUnauthenticatedResult().getAiResult().getVerdict() != null) {
+            roleAiVerdicts.put("unauthenticated", r.getUnauthenticatedResult().getAiResult().getVerdict().name());
+        }
+
+        if (topAi == null && roleAiVerdicts.isEmpty()) {
+            return null;
+        }
+
+        String verdict = topAi != null && topAi.getVerdict() != null
+                ? topAi.getVerdict().name()
+                : (r.getOverallAiVerdict() != null ? r.getOverallAiVerdict().name() : "INCONCLUSIVE");
+        String reasoning = topAi != null ? topAi.getReasoning() : "";
+        String model = topAi != null ? topAi.getModel() : "unknown";
+        long execTime = topAi != null ? topAi.getExecutionTimeMs() : 0L;
+        long timestamp = topAi != null ? topAi.getTimestamp() : System.currentTimeMillis();
+        boolean cached = topAi != null && topAi.isCached();
+
+        return new AuditRecordSummaryDto.AiAnalysisSummaryDto(
+                verdict, reasoning, model, execTime, timestamp, cached, roleAiVerdicts
+        );
     }
 
     public void shutdown() {

@@ -7,8 +7,11 @@ import burp.api.montoya.http.message.responses.HttpResponse;
 import thorization.model.AuditRecord;
 import thorization.model.AuthorizationCheckResult;
 import thorization.model.UserRole;
+import thorization.model.substitution.ParameterSubstitutionRule;
+import thorization.core.substitution.ParameterSubstitutionEngine;
 import thorization.util.HeaderUtils;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -18,16 +21,26 @@ public class ReplayEngine {
 
     private final MontoyaApi api;
     private final DetectionEngine detectionEngine;
+    private final ParameterSubstitutionEngine substitutionEngine;
 
     public ReplayEngine(MontoyaApi api, DetectionEngine detectionEngine) {
+        this(api, detectionEngine, new ParameterSubstitutionEngine());
+    }
+
+    public ReplayEngine(MontoyaApi api, DetectionEngine detectionEngine, ParameterSubstitutionEngine substitutionEngine) {
         this.api = api;
         this.detectionEngine = detectionEngine;
+        this.substitutionEngine = substitutionEngine != null ? substitutionEngine : new ParameterSubstitutionEngine();
     }
 
     /**
      * Executes replay tests for all active roles and optionally unauthenticated.
      */
     public void executeAudit(AuditRecord record, List<UserRole> roles, boolean testUnauthenticated) {
+        executeAudit(record, roles, testUnauthenticated, Collections.emptyList());
+    }
+
+    public void executeAudit(AuditRecord record, List<UserRole> roles, boolean testUnauthenticated, List<ParameterSubstitutionRule> substitutionRules) {
         HttpRequest originalRequest = record.getOriginalRequest();
         HttpResponse originalResponse = record.getOriginalResponse();
 
@@ -43,6 +56,9 @@ public class ReplayEngine {
 
             try {
                 HttpRequest modifiedRequest = HeaderUtils.applyRoleHeaders(originalRequest, role);
+                if (substitutionEngine != null && substitutionRules != null && !substitutionRules.isEmpty()) {
+                    modifiedRequest = substitutionEngine.applySubstitutions(modifiedRequest, role, substitutionRules);
+                }
                 long start = System.currentTimeMillis();
                 HttpRequestResponse replayed = api != null && api.http() != null ? api.http().sendRequest(modifiedRequest) : null;
                 long elapsed = System.currentTimeMillis() - start;
@@ -78,6 +94,9 @@ public class ReplayEngine {
         if (testUnauthenticated) {
             try {
                 HttpRequest unauthRequest = HeaderUtils.stripAuthHeaders(originalRequest);
+                if (substitutionEngine != null && substitutionRules != null && !substitutionRules.isEmpty()) {
+                    unauthRequest = substitutionEngine.applySubstitutions(unauthRequest, null, substitutionRules);
+                }
                 long start = System.currentTimeMillis();
                 HttpRequestResponse replayed = api != null && api.http() != null ? api.http().sendRequest(unauthRequest) : null;
                 long elapsed = System.currentTimeMillis() - start;
