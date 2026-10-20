@@ -164,6 +164,16 @@ class SessionExportImportTest {
     @Test
     void testImportUserSampleSessionFile() throws IOException {
         File sessionFile = new File("/home/aflahh/Burpsuite-Extension/Test-ThorizationExportImpory/thorization_session_1792429898751.json");
+        if (!sessionFile.exists()) {
+            java.net.URL res = getClass().getResource("/fixtures/sample_session.json");
+            if (res != null) {
+                try {
+                    sessionFile = new File(res.toURI());
+                } catch (Exception e) {
+                    sessionFile = new File(res.getPath());
+                }
+            }
+        }
         assertTrue(sessionFile.exists(), "User sample session file should exist");
 
         SessionImporter.ImportResult imported = SessionImporter.importFromFile(sessionFile);

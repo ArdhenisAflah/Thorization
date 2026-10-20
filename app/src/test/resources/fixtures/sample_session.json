@@ -1,0 +1,120 @@
+{
+  "version": "1.2.0",
+  "exportTimestamp": 1792429907271,
+  "roles": [
+    {
+      "id": "d11f3d88-d82e-4283-8fe2-a751462d0ee0",
+      "name": "User",
+      "enabled": true,
+      "rawHeaders": "Auth: True",
+      "rawCookies": "True"
+    }
+  ],
+  "pipelines": [
+    {
+      "id": "7efb5a29-cc84-4d93-83f4-8aa24cf4bf87",
+      "name": "BOLA Cross-Role Data Verification",
+      "description": "Tests if User 2 can read records created by User 1",
+      "steps": [
+        {
+          "id": "621be1e3-e79a-45e2-8c85-a7752665091a",
+          "name": "Step 1: Setup Resource",
+          "stepType": "REQUEST",
+          "enabled": true,
+          "method": "POST",
+          "urlTemplate": "https://api.target.local/resource",
+          "headersTemplate": "",
+          "bodyTemplate": "{\n  \"item_id\": \"ITEM_001\"\n}",
+          "targetRoleId": "UNAUTHENTICATED",
+          "isTeardown": false,
+          "extractions": [
+            {
+              "varName": "RESOURCE_ID",
+              "source": "RESPONSE_BODY",
+              "type": "JSON_PATH",
+              "expression": "$.item_id",
+              "defaultValue": "ITEM_001"
+            }
+          ]
+        },
+        {
+          "id": "e6344e4e-efc6-4ac7-a1ff-963a5af70c83",
+          "name": "Step 2: Verify Setup Response",
+          "stepType": "CONDITION_BRANCH",
+          "enabled": true,
+          "conditionType": "STATUS_CODE_EQUALS",
+          "expectedValue": "200",
+          "onTrueAction": "CONTINUE",
+          "onFalseAction": "STOP_PIPELINE",
+          "failureNote": "Resource setup step failed - aborting pipeline"
+        },
+        {
+          "id": "9a75326a-25bb-4a27-b980-3830ea423426",
+          "name": "Step 3: Replay with Attacker Context",
+          "stepType": "REQUEST",
+          "enabled": true,
+          "method": "GET",
+          "urlTemplate": "https://api.target.local/resource/{{RESOURCE_ID}}",
+          "headersTemplate": "",
+          "bodyTemplate": "",
+          "targetRoleId": "UNAUTHENTICATED",
+          "isTeardown": false,
+          "extractions": []
+        },
+        {
+          "id": "ea0afcad-b2a4-410e-8c00-51bb2e6fe776",
+          "name": "Step 4: Assert BOLA Vulnerability",
+          "stepType": "CONDITION_BRANCH",
+          "enabled": true,
+          "conditionType": "STATUS_CODE_EQUALS",
+          "expectedValue": "200",
+          "onTrueAction": "MARK_VERDICT_BYPASS",
+          "onFalseAction": "MARK_VERDICT_ENFORCED",
+          "failureNote": "Attacker query was blocked or returned non-200"
+        }
+      ]
+    }
+  ],
+  "records": [
+    {
+      "id": 119,
+      "timestamp": "00:11:02",
+      "sourceTool": "Proxy",
+      "method": "GET",
+      "url": "https://ethol.pens.ac.id/mahasiswa/beranda",
+      "path": "/mahasiswa/beranda",
+      "originalStatusCode": 0,
+      "originalResponseLength": 0,
+      "isStateChanging": false,
+      "originalAction": "DROPPED",
+      "isPipelineExecution": false,
+      "originalRequest": "GET /mahasiswa/beranda HTTP/2\r\nHost: ethol.pens.ac.id\r\nCookie: token\u003deyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub21vciI6MjU0MDEsIm5pcG5ycCI6IjUyMjQ2MDAwNjIiLCJuYW1hIjoiQXJkaGVuaXMgTXVoYW1tYWQgQWZsYWgiLCJoYWtBa3NlcyI6WyJtYWhhc2lzd2EiXSwiaWF0IjoxNzkyNDI5NTY2LCJleHAiOjE3OTI0MzA0NjZ9.h2JseC7upHWDTb4MNrwMhXGEkIvEXnO0ymafT860xQ4\r\nUser-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0\r\nAccept: text/html,application/xhtml+xml,application/xml;q\u003d0.9,*/*;q\u003d0.8\r\nAccept-Language: en-US,en;q\u003d0.9\r\nAccept-Encoding: gzip, deflate, br\r\nUpgrade-Insecure-Requests: 1\r\nSec-Fetch-Dest: document\r\nSec-Fetch-Mode: navigate\r\nSec-Fetch-Site: none\r\nSec-Fetch-User: ?1\r\nPriority: u\u003d0, i\r\nTe: trailers\r\n\r\n",
+      "roleResults": {
+        "d11f3d88-d82e-4283-8fe2-a751462d0ee0": {
+          "roleId": "d11f3d88-d82e-4283-8fe2-a751462d0ee0",
+          "roleName": "User",
+          "verdict": "INDETERMINABLE",
+          "statusCode": 200,
+          "responseLength": 732,
+          "similarityScore": 0.0,
+          "executionTimeMs": 26,
+          "notes": "Manual Review: HTTP 200 matched, but body changed (len diff 100.0%, sim 0.00).",
+          "request": "GET /mahasiswa/beranda HTTP/2\r\nHost: ethol.pens.ac.id\r\nUser-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0\r\nAccept: text/html,application/xhtml+xml,application/xml;q\u003d0.9,*/*;q\u003d0.8\r\nAccept-Language: en-US,en;q\u003d0.9\r\nAccept-Encoding: gzip, deflate, br\r\nUpgrade-Insecure-Requests: 1\r\nSec-Fetch-Dest: document\r\nSec-Fetch-Mode: navigate\r\nSec-Fetch-Site: none\r\nSec-Fetch-User: ?1\r\nPriority: u\u003d0, i\r\nTe: trailers\r\nCookie: True\r\nAuth: True\r\n\r\n",
+          "response": "HTTP/2 200 OK\r\nServer: nginx\r\nDate: Mon, 19 Oct 2026 17:11:02 GMT\r\nContent-Type: text/html\r\nLast-Modified: Thu, 15 Oct 2026 05:55:55 GMT\r\nEtag: W/\"6ad06aeb-2dc\"\r\nCache-Control: no-cache, no-store, must-revalidate\r\nPragma: no-cache\r\nExpires: 0\r\nX-Content-Type-Options: nosniff\r\nX-Frame-Options: SAMEORIGIN\r\nReferrer-Policy: strict-origin-when-cross-origin\r\nPermissions-Policy: geolocation\u003d(self), microphone\u003d(self), camera\u003d(self)\r\nStrict-Transport-Security: max-age\u003d31536000\r\n\r\n\u003c!doctype html\u003e\n\u003chtml lang\u003d\"id\"\u003e\n  \u003chead\u003e\n    \u003cmeta charset\u003d\"UTF-8\" /\u003e\n    \u003clink rel\u003d\"icon\" type\u003d\"image/png\" href\u003d\"/ethol_fav.png\" /\u003e\n    \u003cmeta name\u003d\"viewport\" content\u003d\"width\u003ddevice-width, initial-scale\u003d1.0\" /\u003e\n    \u003ctitle\u003eETHOL â PENS\u003c/title\u003e\n    \u003clink rel\u003d\"preconnect\" href\u003d\"https://fonts.googleapis.com\" /\u003e\n    \u003clink rel\u003d\"preconnect\" href\u003d\"https://fonts.gstatic.com\" crossorigin\u003d\"\" /\u003e\n    \u003clink href\u003d\"https://fonts.googleapis.com/css2?family\u003dInter:wght@400;500;600;700;800;900\u0026display\u003dswap\" rel\u003d\"stylesheet\" /\u003e\n    \u003cscript type\u003d\"module\" crossorigin src\u003d\"/assets/index-SJob41S3.js\"\u003e\u003c/script\u003e\n    \u003clink rel\u003d\"stylesheet\" crossorigin href\u003d\"/assets/index-P-jNYnLF.css\"\u003e\n  \u003c/head\u003e\n  \u003cbody\u003e\n    \u003cdiv id\u003d\"root\"\u003e\u003c/div\u003e\n  \u003c/body\u003e\n\u003c/html\u003e\n"
+        }
+      },
+      "unauthenticatedResult": {
+        "roleId": "unauthenticated",
+        "roleName": "Unauthenticated",
+        "verdict": "INDETERMINABLE",
+        "statusCode": 200,
+        "responseLength": 732,
+        "similarityScore": 0.0,
+        "executionTimeMs": 9,
+        "notes": "Manual Review: HTTP 200 matched, but body changed (len diff 100.0%, sim 0.00).",
+        "request": "GET /mahasiswa/beranda HTTP/2\r\nHost: ethol.pens.ac.id\r\nUser-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0\r\nAccept: text/html,application/xhtml+xml,application/xml;q\u003d0.9,*/*;q\u003d0.8\r\nAccept-Language: en-US,en;q\u003d0.9\r\nAccept-Encoding: gzip, deflate, br\r\nUpgrade-Insecure-Requests: 1\r\nSec-Fetch-Dest: document\r\nSec-Fetch-Mode: navigate\r\nSec-Fetch-Site: none\r\nSec-Fetch-User: ?1\r\nPriority: u\u003d0, i\r\nTe: trailers\r\n\r\n",
+        "response": "HTTP/2 200 OK\r\nServer: nginx\r\nDate: Mon, 19 Oct 2026 17:11:02 GMT\r\nContent-Type: text/html\r\nLast-Modified: Thu, 15 Oct 2026 05:55:55 GMT\r\nEtag: W/\"6ad06aeb-2dc\"\r\nCache-Control: no-cache, no-store, must-revalidate\r\nPragma: no-cache\r\nExpires: 0\r\nX-Content-Type-Options: nosniff\r\nX-Frame-Options: SAMEORIGIN\r\nReferrer-Policy: strict-origin-when-cross-origin\r\nPermissions-Policy: geolocation\u003d(self), microphone\u003d(self), camera\u003d(self)\r\nStrict-Transport-Security: max-age\u003d31536000\r\n\r\n\u003c!doctype html\u003e\n\u003chtml lang\u003d\"id\"\u003e\n  \u003chead\u003e\n    \u003cmeta charset\u003d\"UTF-8\" /\u003e\n    \u003clink rel\u003d\"icon\" type\u003d\"image/png\" href\u003d\"/ethol_fav.png\" /\u003e\n    \u003cmeta name\u003d\"viewport\" content\u003d\"width\u003ddevice-width, initial-scale\u003d1.0\" /\u003e\n    \u003ctitle\u003eETHOL â PENS\u003c/title\u003e\n    \u003clink rel\u003d\"preconnect\" href\u003d\"https://fonts.googleapis.com\" /\u003e\n    \u003clink rel\u003d\"preconnect\" href\u003d\"https://fonts.gstatic.com\" crossorigin\u003d\"\" /\u003e\n    \u003clink href\u003d\"https://fonts.googleapis.com/css2?family\u003dInter:wght@400;500;600;700;800;900\u0026display\u003dswap\" rel\u003d\"stylesheet\" /\u003e\n    \u003cscript type\u003d\"module\" crossorigin src\u003d\"/assets/index-SJob41S3.js\"\u003e\u003c/script\u003e\n    \u003clink rel\u003d\"stylesheet\" crossorigin href\u003d\"/assets/index-P-jNYnLF.css\"\u003e\n  \u003c/head\u003e\n  \u003cbody\u003e\n    \u003cdiv id\u003d\"root\"\u003e\u003c/div\u003e\n  \u003c/body\u003e\n\u003c/html\u003e\n"
+      }
+    }
+  ]
+}
