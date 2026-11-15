@@ -30,7 +30,7 @@ The central workbench provides a responsive, non-clipping 2-tier toolbar, live s
 
 * **Organized Engine & I/O Controls**: Top tier handles engine power, idle/active status, interception modes, and record counts; bottom tier provides search filtering, HTML/CSV report generation, and session JSON export/import.
 * **Independent Column Classification**: Role verdicts, unauthenticated checks, and AI evaluations operate independently so network anomalies in one action do not corrupt other audit results.
-* **Contextual Actions**: Right-click menu allows instant cURL generation, targeted re-testing of specific roles, and selective AI audits.
+* **Contextual Actions**: Right-click menu allows instant cURL generation, targeted re-testing of specific roles, and AI analysis of the explicitly selected rows as one batch.
 
 ---
 
@@ -51,7 +51,9 @@ Integrates directly with any OpenAI-compatible LLM endpoint (local Ollama, DeepS
 
 * **Custom HTTP Header Injection**: Configure provider-specific headers (e.g. `x-opencode-session`, custom auth tokens, organization routing headers) directly in the GUI.
 * **Explainable Verdicts**: Classifies differentials into `VALIDATED_ACCESS`, `ACCESS_DENIED`, or `INCONCLUSIVE` with executive reasoning and developer remediation guidance.
-* **Asynchronous Virtual Threads & Caching**: SHA-256 differential hashing and virtual-thread dispatch prevent Burp Suite UI lockups while auditing multiple records.
+* **Collective Selected-Row Analysis**: The selected rows are sent in one AI request with record IDs, selection order, baseline and role-specific evidence, deterministic verdicts, and inferred relationships. The scope stays within the explicit selection; the AI does not trigger new target requests.
+* **Bounded Evidence & Redaction**: Request and response excerpts are size-limited, omitted evidence is marked, and common credentials and sensitive fields are redacted before provider submission. Redaction is heuristic; review evidence before sending it to an external provider.
+* **Asynchronous Analysis**: AI work runs off the Swing event thread. Single-record analysis retains its differential cache; selected-row analysis is a collective batch and does not replace deterministic authorization verdicts.
 
 ---
 
@@ -81,7 +83,7 @@ Drop or pause original client requests before they hit the server, while testing
 * Backwards compatible with earlier session export schemas.
 
 ### AI Agent Bridge
-Embedded REST API on `http://127.0.0.1:1337/api/` enabling external LLM agents, security automation scripts, and Model Context Protocol servers to query audit records, configure roles, and dispatch authorization checks.
+Embedded local REST API on `http://127.0.0.1:1337/api/` for clients and security automation to query audit records, configure roles, and dispatch authorization checks. An external MCP adapter can call this API; Thorization does not include a native MCP server.
 
 ---
 
@@ -191,9 +193,9 @@ app/build/libs/Thorization.jar
 
 ---
 
-## AI Bridge REST API and MCP Integration
+## AI Bridge REST API
 
-Thorization includes an embedded HTTP REST service binding to `http://127.0.0.1:1337/api/`. This interface connects external LLM agents, security automation pipelines, and Model Context Protocol servers directly to the core authorization replay engine.
+Thorization includes an embedded HTTP REST service binding to `http://127.0.0.1:1337/api/`. External clients can use it to read audit data, manage roles, and request authorization replays. The REST API is implemented in Thorization; an MCP server or adapter must be provided separately.
 
 All endpoints communicate via `application/json`.
 
@@ -207,8 +209,11 @@ http://127.0.0.1:1337/api/
 ├── DELETE /roles/{id}      # Remove role
 ├── POST   /analyze         # Replay and analyze request across all roles
 ├── GET    /records         # Query audit records with optional filters
-└── GET    /records/{id}    # Retrieve full replay detail for record
+├── GET    /records/{id}    # Retrieve full replay detail for record
+└── POST   /records/{id}/ai-audit # Run AI analysis for one stored record
 ```
+
+`POST /analyze` sends the supplied request to the configured roles and may generate traffic to the target. Use it only for systems you are authorized to test. The GUI selected-row batch audit analyzes stored evidence and does not replay requests.
 
 ---
 
@@ -521,9 +526,9 @@ Retrieves full replay data and granular role verdicts for a specific audit entry
 
 ---
 
-### Model Context Protocol (MCP) Integration
+### Using an External MCP Adapter
 
-Thorization functions as an MCP backend. AI assistants can register and call the following tool definitions to conduct access control testing autonomously.
+Thorization does not implement the Model Context Protocol. If you run a separate MCP server or adapter, it can expose selected REST operations as MCP tools. The mapping below is an example for that external adapter, not a built-in Thorization feature. Keep mutating or replay operations behind explicit authorization and user controls.
 
 #### Tool Mapping
 
@@ -536,9 +541,9 @@ Thorization functions as an MCP backend. AI assistants can register and call the
 | `thorization_get_records` | `GET` | `/api/records` | Query past audit records with optional `vulnerableOnly` filter. |
 | `thorization_get_record_detail` | `GET` | `/api/records/{id}` | Inspect full differential verdicts and notes for a specific record. |
 
-#### Example MCP Tools Configuration
+#### Example External Adapter Tool Definitions
 
-Standard JSON tool schemas for AI orchestrators:
+Illustrative JSON tool schemas for an MCP adapter that forwards calls to the local REST API:
 
 ```json
 {
