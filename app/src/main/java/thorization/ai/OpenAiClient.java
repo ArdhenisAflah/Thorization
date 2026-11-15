@@ -5,6 +5,9 @@ import com.google.gson.annotations.SerializedName;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.ConnectException;
+import java.net.UnknownHostException;
+import java.net.http.HttpTimeoutException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -15,6 +18,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * High-performance client targeting OpenAI-compatible endpoints using Java 21 java.net.http.HttpClient.
@@ -184,9 +188,41 @@ public class OpenAiClient {
             return new ConnectionTestResult(true, 200, "Successfully connected to model '" + config.getModelName() + "': " + reply, latency);
         } catch (Exception e) {
             long latency = System.currentTimeMillis() - startTime;
-            String msg = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+                return new ConnectionTestResult(false, 0, "Connection test interrupted", latency);
+            }
+            String msg = describeConnectionFailure(e);
             return new ConnectionTestResult(false, 0, "Connection test failed: " + msg, latency);
         }
+    }
+
+    private String describeConnectionFailure(Throwable error) {
+        Throwable deepest = error;
+        while (deepest.getCause() != null
+                && (deepest.getMessage() == null || deepest.getMessage().isBlank())) {
+            deepest = deepest.getCause();
+        }
+        if (deepest instanceof HttpTimeoutException || deepest instanceof TimeoutException) {
+            return "Request timed out";
+        }
+        if (deepest instanceof ConnectException) {
+            return "Could not connect to the endpoint";
+        }
+        if (deepest instanceof UnknownHostException) {
+            return "Endpoint host could not be found";
+        }
+        String message = deepest.getMessage();
+        if (message != null && !message.isBlank()) {
+            return message;
+        }
+        for (Throwable current = error; current != null; current = current.getCause()) {
+            message = current.getMessage();
+            if (message != null && !message.isBlank()) {
+                return message;
+            }
+        }
+        return "Unexpected error (" + deepest.getClass().getSimpleName() + ")";
     }
 
     private String extractErrorMessage(String responseBody) {

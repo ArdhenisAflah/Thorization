@@ -50,7 +50,7 @@ shadowJar {
     manifest {
         attributes(
             'Implementation-Title': 'Thorization',
-            'Implementation-Version': '1.0.0'
+            'Implementation-Version': '1.4.1'
         )
     }
 }

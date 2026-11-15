@@ -4,6 +4,12 @@ All notable changes, patches, UI improvements, and bug fixes for the **Thorizati
 
 ---
 
+## [v1.4.1] - 2026-11-15
+### Changed
+- Reorganized AI settings into clear provider, connection, and request sections with concise provider names and clearer connection feedback.
+- Improved connection diagnostics so failed tests show a useful cause instead of `null`.
+- Set the fat JAR implementation version to `1.4.1`.
+
 ## [v1.4.0] - 2026-11-15
 ### Added
 - Collective AI audit for explicitly selected rows, with structured, bounded endpoint evidence and cross-endpoint relationships.

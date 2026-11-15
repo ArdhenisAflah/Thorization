@@ -106,7 +106,7 @@ class AiSettingsPanelTest {
         // Invalid URL
         panel.getEndpointUrlField().setText("");
         panel.saveConfig();
-        assertTrue(panel.getTestStatusLabel().getText().contains("Validation Error"));
+        assertTrue(panel.getTestStatusLabel().getText().contains("Check settings"));
 
         // Valid settings save
         panel.getEndpointUrlField().setText("http://127.0.0.1:11434/v1/chat/completions");
@@ -134,11 +134,11 @@ class AiSettingsPanelTest {
         AiSettingsPanel panel = new AiSettingsPanel(controller);
         controller.getAiSemanticEngine().getCache().put("hash1", AiEvaluationResult.pending("m"));
         panel.updateCacheStats();
-        assertTrue(panel.getCacheStatsLabel().getText().contains("1 entries"));
+        assertTrue(panel.getCacheStatsLabel().getText().contains("Cached analyses: 1"));
 
         panel.getClearCacheBtn().doClick();
         assertEquals(0, controller.getAiSemanticEngine().getCache().size());
-        assertTrue(panel.getCacheStatsLabel().getText().contains("0 entries"));
+        assertTrue(panel.getCacheStatsLabel().getText().contains("Cached analyses: 0"));
     }
 
     @Test

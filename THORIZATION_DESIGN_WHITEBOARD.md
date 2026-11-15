@@ -146,3 +146,4 @@ app/build/libs/Thorization.jar
 # UI copy
 
 - Main navigation, audit actions, role settings, AI settings, record viewers, and pipeline status use concise labels and natural user-facing language.
+- AI provider presets display short names and stay synchronized with the configured endpoint. Connection results use concise, theme-aware status labels with actionable failure details.
