@@ -30,7 +30,7 @@ Traditional access control and authorization testing (BOLA, IDOR, BFLA, and priv
 ### 1. Interception & Analysis Table
 The central workbench provides a responsive, non-clipping 2-tier toolbar, live substring filtering, per-role and unauthenticated verdict matrices, and an integrated split-pane inspector displaying original, role-replayed, and unauthenticated traffic side-by-side.
 
-![Interception and Analysis Table](docs/images/interception-table-analysis.png)
+![Interception and Analysis Table](docs/images/interception-table-analysis-sanitized.png)
 
 * **Organized Engine & I/O Controls**: Top tier handles engine power, idle/active status, interception modes, and record counts; bottom tier provides search filtering, HTML/CSV report generation, and session JSON export/import.
 * **Independent Column Classification**: Role verdicts, unauthenticated checks, and AI evaluations operate independently so network anomalies in one action do not corrupt other audit results.
@@ -41,7 +41,7 @@ The central workbench provides a responsive, non-clipping 2-tier toolbar, live s
 ### 2. Real-Time Statistics & Analytics Dashboard
 Visualizes test distribution and real-time verdict metrics across all tested transactions and user roles.
 
-![Statistics Dashboard](docs/images/statistics-dashboard.png)
+![Statistics Dashboard](docs/images/statistics-dashboard-current.png)
 
 * **Key Metrics**: Real-time count and percentage breakdown for `Bypass`, `Enforced`, and `Manual Review` outcomes.
 * **Distribution Analytics**: Interactive pie chart reflecting authorization boundary coverage during live assessments.
@@ -51,7 +51,7 @@ Visualizes test distribution and real-time verdict metrics across all tested tra
 ### 3. In-GUI AI Semantic Analysis Engine
 Integrates directly with any OpenAI-compatible LLM endpoint (local Ollama, DeepSeek, Qwen, Gemini, OpenCode Go) to analyze response differentials with structured AppSec explainability.
 
-![AI Configuration Panel](docs/images/ai-configuration-panel.png)
+![AI Configuration Panel](docs/images/ai-configuration-panel-sanitized.png)
 
 * **Custom HTTP Header Injection**: Configure provider-specific headers (e.g. `x-opencode-session`, custom auth tokens, organization routing headers) directly in the GUI.
 * **Explainable Verdicts**: Classifies differentials into `VALIDATED_ACCESS`, `ACCESS_DENIED`, or `INCONCLUSIVE` with executive reasoning and developer remediation guidance.
