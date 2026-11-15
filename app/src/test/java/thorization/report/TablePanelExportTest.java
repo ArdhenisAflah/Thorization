@@ -69,17 +69,17 @@ class TablePanelExportTest {
         for (Component comp : menu.getComponents()) {
             if (comp instanceof JMenuItem item) {
                 String text = item.getText();
-                if ("Copy as cURL".equals(text)) hasCopyCurl = true;
+                if ("Copy cURL".equals(text)) hasCopyCurl = true;
                 if ("Export as HTML...".equals(text)) hasExportHtml = true;
                 if ("Export as CSV...".equals(text)) hasExportCsv = true;
-                if ("AI Audit Selected Rows".equals(text)) hasAiAudit = true;
+                if ("Analyze Selected Rows".equals(text)) hasAiAudit = true;
             }
         }
 
-        assertTrue(hasCopyCurl, "Context menu must include 'Copy as cURL'");
+        assertTrue(hasCopyCurl, "Context menu must include 'Copy cURL'");
         assertTrue(hasExportHtml, "Context menu must include 'Export as HTML...'");
         assertTrue(hasExportCsv, "Context menu must include 'Export as CSV...'");
-        assertTrue(hasAiAudit, "Context menu must include 'AI Audit Selected Rows'");
+        assertTrue(hasAiAudit, "Context menu must include 'Analyze Selected Rows'");
     }
 
     @Test

@@ -69,9 +69,9 @@ public class AiSettingsPanel extends JPanel {
         // 1. Header Card
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
-        JLabel titleLabel = new JLabel("AI Semantic Analysis Configuration");
+        JLabel titleLabel = new JLabel("AI Settings");
         titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 16f));
-        JLabel subtitleLabel = new JLabel("Configure OpenAI-compatible LLM endpoints (Ollama, DeepSeek, OpenAI, Qwen, Gemini) for access control validation.");
+        JLabel subtitleLabel = new JLabel("Connect an OpenAI-compatible model to review authorization evidence.");
         subtitleLabel.setForeground(Color.GRAY);
         headerPanel.add(titleLabel, BorderLayout.NORTH);
         headerPanel.add(subtitleLabel, BorderLayout.SOUTH);
@@ -80,7 +80,7 @@ public class AiSettingsPanel extends JPanel {
 
         // 2. Main Form Panel with GridBagLayout
         JPanel formPanel = new JPanel(new GridBagLayout());
-        formPanel.setBorder(BorderFactory.createTitledBorder("Endpoint & Model Parameters"));
+        formPanel.setBorder(BorderFactory.createTitledBorder("Provider"));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(6, 8, 6, 8);
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -90,7 +90,7 @@ public class AiSettingsPanel extends JPanel {
 
         // Provider Preset Dropdown
         gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.0;
-        formPanel.add(new JLabel("Provider Preset:"), gbc);
+        formPanel.add(new JLabel("Provider:"), gbc);
         gbc.gridx = 1; gbc.gridy = row; gbc.weightx = 1.0;
         presetCombo = new JComboBox<>(new String[]{
                 "Local Ollama (http://localhost:11434/v1/chat/completions)",
@@ -115,7 +115,7 @@ public class AiSettingsPanel extends JPanel {
 
         // API Key with Show/Hide checkbox
         gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.0;
-        formPanel.add(new JLabel("API Key (Bearer Token):"), gbc);
+        formPanel.add(new JLabel("API Key:"), gbc);
         gbc.gridx = 1; gbc.gridy = row; gbc.weightx = 1.0;
         JPanel keyPanel = new JPanel(new BorderLayout(8, 0));
         apiKeyField = new JPasswordField(30);
@@ -150,7 +150,7 @@ public class AiSettingsPanel extends JPanel {
         headersScroll.setPreferredSize(new Dimension(450, 70));
         JPanel headersContainer = new JPanel(new BorderLayout(0, 4));
         headersContainer.add(headersScroll, BorderLayout.CENTER);
-        JLabel headersHint = new JLabel("Optional. One header per line (e.g. 'x-opencode-session: my-session-id' for OpenCode Go, or custom auth/routing headers).");
+        JLabel headersHint = new JLabel("Add one provider header per line. Leave blank if none are needed.");
         headersHint.setFont(headersHint.getFont().deriveFont(Font.PLAIN, 11f));
         headersHint.setForeground(Color.GRAY);
         headersContainer.add(headersHint, BorderLayout.SOUTH);
@@ -159,7 +159,7 @@ public class AiSettingsPanel extends JPanel {
 
         // Timeout (seconds)
         gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.0;
-        formPanel.add(new JLabel("Timeout (seconds):"), gbc);
+        formPanel.add(new JLabel("Timeout in seconds:"), gbc);
         gbc.gridx = 1; gbc.gridy = row; gbc.weightx = 1.0;
         timeoutSpinner = new JSpinner(new SpinnerNumberModel(AiConfig.DEFAULT_TIMEOUT_SECONDS, 1, 600, 1));
         JPanel timeoutPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
@@ -181,7 +181,7 @@ public class AiSettingsPanel extends JPanel {
         gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.0;
         formPanel.add(new JLabel("Automation:"), gbc);
         gbc.gridx = 1; gbc.gridy = row; gbc.weightx = 1.0;
-        autoAnalyzeCheckBox = new JCheckBox("Automatically trigger AI Semantic Analysis on intercepted requests");
+        autoAnalyzeCheckBox = new JCheckBox("Analyze intercepted requests automatically");
         formPanel.add(autoAnalyzeCheckBox, gbc);
         row++;
 
@@ -190,8 +190,8 @@ public class AiSettingsPanel extends JPanel {
 
         // 3. Cache Management Panel
         JPanel cachePanel = new JPanel(new BorderLayout(10, 0));
-        cachePanel.setBorder(BorderFactory.createTitledBorder("SHA-256 Evaluation Cache"));
-        cacheStatsLabel = new JLabel("Cached Evaluations: 0 entries");
+        cachePanel.setBorder(BorderFactory.createTitledBorder("Analysis Cache"));
+        cacheStatsLabel = new JLabel("Cached analyses: 0");
         clearCacheBtn = new JButton("Clear Cache");
         clearCacheBtn.addActionListener(e -> {
             if (controller != null && controller.getAiSemanticEngine() != null) {
@@ -268,7 +268,7 @@ public class AiSettingsPanel extends JPanel {
 
     private void onTestConnection() {
         testConnectionBtn.setEnabled(false);
-        testStatusLabel.setText("● Testing connection to endpoint...");
+        testStatusLabel.setText("Testing connection...");
         testStatusLabel.setForeground(new Color(0, 123, 255));
 
         AiConfig testConfig = buildConfigFromUi();
@@ -283,10 +283,10 @@ public class AiSettingsPanel extends JPanel {
                 SwingUtilities.invokeLater(() -> {
                     testConnectionBtn.setEnabled(true);
                     if (res.success()) {
-                        testStatusLabel.setText(String.format("✓ Success (%d ms): %s", res.latencyMs(), res.message()));
+                        testStatusLabel.setText(String.format("✓ Connected in %d ms: %s", res.latencyMs(), res.message()));
                         testStatusLabel.setForeground(new Color(40, 167, 69));
                     } else {
-                        testStatusLabel.setText(String.format("✗ Failed (%d ms): %s", res.latencyMs(), res.message()));
+                        testStatusLabel.setText(String.format("✗ Connection failed in %d ms: %s", res.latencyMs(), res.message()));
                         testStatusLabel.setForeground(new Color(220, 53, 69));
                     }
                 });
@@ -304,7 +304,7 @@ public class AiSettingsPanel extends JPanel {
         AiConfig newConfig = buildConfigFromUi();
         List<String> errors = newConfig.validate();
         if (!errors.isEmpty()) {
-            testStatusLabel.setText("✗ Validation Error: " + String.join("; ", errors));
+            testStatusLabel.setText("✗ Check these settings: " + String.join("; ", errors));
             testStatusLabel.setForeground(new Color(220, 53, 69));
             return;
         }
@@ -312,7 +312,7 @@ public class AiSettingsPanel extends JPanel {
         if (controller != null) {
             controller.setAiConfig(newConfig);
         }
-        testStatusLabel.setText("✓ Settings saved successfully.");
+        testStatusLabel.setText("✓ Settings saved");
         testStatusLabel.setForeground(new Color(40, 167, 69));
         updateCacheStats();
     }
@@ -349,9 +349,9 @@ public class AiSettingsPanel extends JPanel {
     public void updateCacheStats() {
         if (controller != null && controller.getAiSemanticEngine() != null && controller.getAiSemanticEngine().getCache() != null) {
             long size = controller.getAiSemanticEngine().getCache().size();
-            cacheStatsLabel.setText(String.format("Cached Evaluations: %d entries", size));
+            cacheStatsLabel.setText(String.format("Cached analyses: %d", size));
         } else {
-            cacheStatsLabel.setText("Cached Evaluations: 0 entries");
+            cacheStatsLabel.setText("Cached analyses: 0");
         }
     }
 

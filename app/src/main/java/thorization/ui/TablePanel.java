@@ -135,7 +135,7 @@ public class TablePanel extends JPanel implements EngineListener {
         powerToggleBtn.setPreferredSize(new Dimension(65, 26));
         powerToggleBtn.setFont(powerToggleBtn.getFont().deriveFont(Font.BOLD, 12f));
         powerToggleBtn.setBackground(new Color(230, 230, 230));
-        powerToggleBtn.setToolTipText("Toggle Thorization traffic interception and auto-replay");
+        powerToggleBtn.setToolTipText("Start or stop traffic interception and replay");
         powerToggleBtn.addActionListener(e -> {
             boolean active = powerToggleBtn.isSelected();
             controller.setEnabled(active);
@@ -145,20 +145,20 @@ public class TablePanel extends JPanel implements EngineListener {
         statusBadgeLabel = new JLabel("● Idle");
         statusBadgeLabel.setFont(statusBadgeLabel.getFont().deriveFont(Font.BOLD, 12f));
         statusBadgeLabel.setForeground(Color.GRAY);
-        statusBadgeLabel.setToolTipText("Engine status: Idle");
+        statusBadgeLabel.setToolTipText("Interception is off");
 
         modeDropdown = new JComboBox<>(InterceptionMode.values());
-        modeDropdown.setToolTipText("Interception Action Mode (Safe Drop Control)");
+        modeDropdown.setToolTipText("Choose how original requests are handled during replay");
         modeDropdown.setSelectedItem(controller.getInterceptionMode());
         modeDropdown.addActionListener(e -> controller.setInterceptionMode((InterceptionMode) modeDropdown.getSelectedItem()));
 
         dropAllQuickCheck = new JCheckBox("Drop All");
-        dropAllQuickCheck.setToolTipText("When checked, even GET requests are safely dropped in Burp Proxy while replaying");
+        dropAllQuickCheck.setToolTipText("Drop every request during replay, including GET requests");
         dropAllQuickCheck.setSelected(controller.getFilterConfig().isDropAllRequests());
         dropAllQuickCheck.addActionListener(e -> controller.setDropAllRequests(dropAllQuickCheck.isSelected()));
 
         JButton clearBtn = new JButton("Clear");
-        clearBtn.setToolTipText("Clear all captured records in the table");
+        clearBtn.setToolTipText("Remove all audit records");
         clearBtn.addActionListener(e -> controller.clearRecords());
 
         row1Left.add(powerToggleBtn);
@@ -169,7 +169,7 @@ public class TablePanel extends JPanel implements EngineListener {
         row1Left.add(clearBtn);
 
         JPanel row1Right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
-        countLabel = new JLabel("Total: 0");
+        countLabel = new JLabel("Records: 0");
         countLabel.setFont(countLabel.getFont().deriveFont(Font.BOLD, 12f));
         row1Right.add(countLabel);
 
@@ -185,7 +185,7 @@ public class TablePanel extends JPanel implements EngineListener {
         row2Left.add(new JLabel("Search:"));
         searchFilterField = new JTextField(15);
         searchFilterField.setPreferredSize(new Dimension(160, 26));
-        searchFilterField.setToolTipText("Filter term matching URL, method, status, or tool (string)");
+        searchFilterField.setToolTipText("Filter by URL, method, status, or source");
         searchFilterField.getDocument().addDocumentListener(new DocumentListener() {
             @Override public void insertUpdate(DocumentEvent e) { applyFilter(); }
             @Override public void removeUpdate(DocumentEvent e) { applyFilter(); }
@@ -195,19 +195,19 @@ public class TablePanel extends JPanel implements EngineListener {
 
         JPanel row2Right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
         htmlReportBtn = new JButton("HTML Report");
-        htmlReportBtn.setToolTipText("Generate standalone interactive offline HTML audit report");
+        htmlReportBtn.setToolTipText("Export an interactive HTML report");
         htmlReportBtn.addActionListener(e -> onExportHtmlReport());
 
         csvExportBtn = new JButton("CSV Export");
-        csvExportBtn.setToolTipText("Export audit records and role verdicts to RFC 4180 CSV");
+        csvExportBtn.setToolTipText("Export audit records and role verdicts as CSV");
         csvExportBtn.addActionListener(e -> onExportCsvReport());
 
         exportBtn = new JButton("Export");
-        exportBtn.setToolTipText("Export session records and settings (.json)");
+        exportBtn.setToolTipText("Export records and settings as a JSON session");
         exportBtn.addActionListener(e -> onExportSession());
 
         importBtn = new JButton("Import");
-        importBtn.setToolTipText("Import session records and settings (.json)");
+        importBtn.setToolTipText("Import a JSON session");
         importBtn.addActionListener(e -> onImportSession());
 
         row2Right.add(htmlReportBtn);
@@ -265,25 +265,25 @@ public class TablePanel extends JPanel implements EngineListener {
 
         // Right-Click Context Menu for re-testing, cURL copy, reporting and item removal
         contextMenu = new JPopupMenu();
-        JMenuItem retestSelectedMenuItem = new JMenuItem("Re-Test Selected Request(s)...");
+        JMenuItem retestSelectedMenuItem = new JMenuItem("Retest Selected");
         retestSelectedMenuItem.addActionListener(e -> onRetestSelected());
 
-        JMenuItem retestAllMenuItem = new JMenuItem("Re-Test All Captured Requests...");
+        JMenuItem retestAllMenuItem = new JMenuItem("Retest All");
         retestAllMenuItem.addActionListener(e -> onRetestAll());
 
-        JMenuItem aiAuditMenuItem = new JMenuItem("AI Audit Selected Rows");
+        JMenuItem aiAuditMenuItem = new JMenuItem("Analyze Selected Rows");
         aiAuditMenuItem.addActionListener(e -> onAiAuditSelectedRows());
 
-        JMenuItem copyCurlMenuItem = new JMenuItem("Copy as cURL");
+        JMenuItem copyCurlMenuItem = new JMenuItem("Copy cURL");
         copyCurlMenuItem.addActionListener(e -> onCopyAsCurl());
 
-        JMenuItem exportHtmlMenuItem = new JMenuItem("Export as HTML...");
+        JMenuItem exportHtmlMenuItem = new JMenuItem("Export HTML");
         exportHtmlMenuItem.addActionListener(e -> onExportSelectedHtml());
 
-        JMenuItem exportCsvMenuItem = new JMenuItem("Export as CSV...");
+        JMenuItem exportCsvMenuItem = new JMenuItem("Export CSV");
         exportCsvMenuItem.addActionListener(e -> onExportSelectedCsv());
 
-        JMenuItem removeMenuItem = new JMenuItem("Remove Selected Item(s)");
+        JMenuItem removeMenuItem = new JMenuItem("Remove Selected");
         removeMenuItem.addActionListener(e -> onRemoveSelectedRecords());
 
         JMenuItem clearMenuItem = new JMenuItem("Clear All Records");
@@ -353,14 +353,14 @@ public class TablePanel extends JPanel implements EngineListener {
             powerToggleBtn.setForeground(Color.WHITE);
             statusBadgeLabel.setText("● Active");
             statusBadgeLabel.setForeground(new Color(40, 167, 69));
-            statusBadgeLabel.setToolTipText("Engine status: Intercepting Traffic");
+            statusBadgeLabel.setToolTipText("Interception is on");
         } else {
             powerToggleBtn.setText("OFF");
             powerToggleBtn.setBackground(new Color(230, 230, 230));
             powerToggleBtn.setForeground(Color.BLACK);
             statusBadgeLabel.setText("● Idle");
             statusBadgeLabel.setForeground(Color.GRAY);
-            statusBadgeLabel.setToolTipText("Engine status: Idle");
+            statusBadgeLabel.setToolTipText("Interception is off");
         }
     }
 
@@ -391,14 +391,14 @@ public class TablePanel extends JPanel implements EngineListener {
     private void onRetestSelected() {
         List<AuditRecord> selectedRecords = getSelectedRecords();
         if (selectedRecords.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please select one or more items from the table to re-test.", "No Items Selected", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Select one or more records to retest.", "No Records Selected", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
 
         RetestRolesDialog dialog = new RetestRolesDialog(
                 this,
-                "Re-Test Selected Requests",
-                "Re-testing " + selectedRecords.size() + " selected request(s)",
+                "Retest Selected Requests",
+                "Retesting " + selectedRecords.size() + " selected requests",
                 controller.getRoles(),
                 controller.getFilterConfig().isTestUnauthenticated()
         );
@@ -408,7 +408,7 @@ public class TablePanel extends JPanel implements EngineListener {
             List<UserRole> chosenRoles = dialog.getSelectedRoles();
             boolean testUnauth = dialog.isTestUnauthenticatedSelected();
             if (chosenRoles.isEmpty() && !testUnauth) {
-                JOptionPane.showMessageDialog(this, "No roles or unauthenticated test selected. Re-test cancelled.", "Warning", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Select at least one role or the unauthenticated test.", "No Tests Selected", JOptionPane.WARNING_MESSAGE);
                 return;
             }
             ensureAiColumnVisible();
@@ -419,14 +419,14 @@ public class TablePanel extends JPanel implements EngineListener {
     private void onRetestAll() {
         List<AuditRecord> allRecords = controller.getRecords();
         if (allRecords == null || allRecords.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Table is empty. No requests available to re-test.", "Table Empty", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "There are no requests to retest.", "No Records", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
 
         RetestRolesDialog dialog = new RetestRolesDialog(
                 this,
-                "Re-Test All Captured Requests",
-                "Re-testing all " + allRecords.size() + " captured request(s)",
+                "Retest All Requests",
+                "Retesting all " + allRecords.size() + " requests",
                 controller.getRoles(),
                 controller.getFilterConfig().isTestUnauthenticated()
         );
@@ -436,7 +436,7 @@ public class TablePanel extends JPanel implements EngineListener {
             List<UserRole> chosenRoles = dialog.getSelectedRoles();
             boolean testUnauth = dialog.isTestUnauthenticatedSelected();
             if (chosenRoles.isEmpty() && !testUnauth) {
-                JOptionPane.showMessageDialog(this, "No roles or unauthenticated test selected. Re-test cancelled.", "Warning", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Select at least one role or the unauthenticated test.", "No Tests Selected", JOptionPane.WARNING_MESSAGE);
                 return;
             }
             ensureAiColumnVisible();
@@ -719,7 +719,7 @@ public class TablePanel extends JPanel implements EngineListener {
             ensureAiColumnVisible();
         }
         tableModel.addRecord(record);
-        countLabel.setText("Total: " + tableModel.getRowCount());
+        countLabel.setText("Records: " + tableModel.getRowCount());
     }
 
     @Override
@@ -751,7 +751,7 @@ public class TablePanel extends JPanel implements EngineListener {
         } else {
             viewerPanel.clearViewers();
         }
-        countLabel.setText("Total: " + tableModel.getRowCount());
+        countLabel.setText("Records: " + tableModel.getRowCount());
     }
 
     @Override
@@ -759,7 +759,7 @@ public class TablePanel extends JPanel implements EngineListener {
         tableModel.clear();
         auditTable.clearSelection();
         viewerPanel.clearViewers();
-        countLabel.setText("Total: 0");
+        countLabel.setText("Records: 0");
     }
 
     @Override

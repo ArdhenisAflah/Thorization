@@ -27,23 +27,23 @@ public class MainTabbedPane extends JPanel {
 
         // Tab 1: Roles Manager
         rolesPanel = new RolesPanel(controller);
-        tabbedPane.addTab("Roles Manager", rolesPanel);
+        tabbedPane.addTab("Roles", rolesPanel);
 
         // Tab 2: Interception & Analysis Table
         tablePanel = new TablePanel(api, controller, this);
-        tabbedPane.addTab("Interception & Analysis Table", tablePanel);
+        tabbedPane.addTab("Audit Log", tablePanel);
 
         // Tab 3: Pipeline Studio (WIP / Future Development)
         pipelineStudioPanel = new PipelineStudioPanel(api, controller);
-        tabbedPane.addTab("Pipeline Studio (WIP)", pipelineStudioPanel);
+        tabbedPane.addTab("Pipelines", pipelineStudioPanel);
 
         // Tab 4: Statistics Dashboard
         statisticsPanel = new StatisticsPanel(controller);
-        tabbedPane.addTab("Statistics Dashboard", statisticsPanel);
+        tabbedPane.addTab("Statistics", statisticsPanel);
 
         // Tab 5: AI Configuration
         aiSettingsPanel = new AiSettingsPanel(controller);
-        tabbedPane.addTab("AI Configuration", aiSettingsPanel);
+        tabbedPane.addTab("AI Settings", aiSettingsPanel);
 
         // Default to Tab 2 (Analysis Table)
         tabbedPane.setSelectedIndex(1);

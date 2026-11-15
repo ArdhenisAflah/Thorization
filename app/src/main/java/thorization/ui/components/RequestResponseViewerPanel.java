@@ -130,13 +130,13 @@ public class RequestResponseViewerPanel extends JPanel {
 
             originalTabPanel.add(split, BorderLayout.CENTER);
         } else {
-            originalTabPanel.add(new JLabel(" Original Editors available inside Burp Suite runtime."), BorderLayout.CENTER);
+            originalTabPanel.add(new JLabel("Request and response details are unavailable in this view."), BorderLayout.CENTER);
         }
     }
 
     private void initUnauthenticatedTab() {
         unauthTabPanel = new JPanel(new BorderLayout());
-        unauthStatusLabel = new JLabel(" Unauthenticated authorization test result.");
+        unauthStatusLabel = new JLabel("Unauthenticated test result");
         unauthStatusLabel.setFont(unauthStatusLabel.getFont().deriveFont(Font.BOLD, 12f));
         unauthStatusLabel.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
         unauthTabPanel.add(unauthStatusLabel, BorderLayout.NORTH);
@@ -152,7 +152,7 @@ public class RequestResponseViewerPanel extends JPanel {
 
             unauthTabPanel.add(split, BorderLayout.CENTER);
         } else {
-            unauthTabPanel.add(new JLabel(" Unauthenticated Editors available inside Burp Suite runtime."), BorderLayout.CENTER);
+            unauthTabPanel.add(new JLabel("Request and response details are unavailable in this view."), BorderLayout.CENTER);
         }
     }
 
@@ -186,7 +186,7 @@ public class RequestResponseViewerPanel extends JPanel {
         leftStatusPanel.add(aiLatencyLabel);
 
         JPanel rightActionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        reanalyzeBtn = new JButton("Re-analyze with AI");
+        reanalyzeBtn = new JButton("Analyze Again");
         reanalyzeBtn.setEnabled(false);
         reanalyzeBtn.addActionListener(e -> {
             if (currentRecord != null && controller != null) {
@@ -194,7 +194,7 @@ public class RequestResponseViewerPanel extends JPanel {
                 aiVerdictBadgeLabel.setText("  ⌛ PENDING  ");
                 aiVerdictBadgeLabel.setForeground(AiVerdict.PENDING.getForegroundColor());
                 aiVerdictBadgeLabel.setBackground(AiVerdict.PENDING.getBackgroundColor());
-                aiReasoningArea.setText("Triggering AI semantic re-analysis for record #" + currentRecord.getId() + "...");
+                aiReasoningArea.setText("Analyzing record #" + currentRecord.getId() + "...");
                 controller.evaluateRecordWithAi(currentRecord, () -> {
                     reanalyzeBtn.setEnabled(true);
                     if (currentRecord != null) {
@@ -204,7 +204,7 @@ public class RequestResponseViewerPanel extends JPanel {
             }
         });
 
-        copyReasoningBtn = new JButton("Copy Reasoning");
+        copyReasoningBtn = new JButton("Copy Analysis");
         copyReasoningBtn.addActionListener(e -> {
             String text = aiReasoningArea.getText();
             if (text != null && !text.isEmpty()) {
@@ -222,7 +222,7 @@ public class RequestResponseViewerPanel extends JPanel {
         aiReasoningArea = new JTextArea();
         aiReasoningArea.setEditable(false);
         aiReasoningArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-        aiReasoningArea.setText("Select an audit entry in the table above to view AI semantic access control analysis.");
+        aiReasoningArea.setText("Select a record to view its AI analysis.");
 
         JScrollPane scrollPane = new JScrollPane(aiReasoningArea);
         aiTabPanel.add(scrollPane, BorderLayout.CENTER);
@@ -238,17 +238,17 @@ public class RequestResponseViewerPanel extends JPanel {
             aiVerdictBadgeLabel.setForeground(v.getForegroundColor());
             aiVerdictBadgeLabel.setBackground(v.getBackgroundColor());
             aiModelTagLabel.setText("Model: " + aiResult.getModel());
-            aiCacheBadgeLabel.setText(aiResult.isCached() ? "⚡ Cached" : "● Live Evaluation");
+            aiCacheBadgeLabel.setText(aiResult.isCached() ? "⚡ Cached" : "● Live");
             aiCacheBadgeLabel.setForeground(aiResult.isCached() ? new Color(112, 34, 194) : new Color(40, 167, 69));
             aiLatencyLabel.setText(String.format("Latency: %d ms", aiResult.getExecutionTimeMs()));
 
             StringBuilder sb = new StringBuilder();
             sb.append("=================================================================\n");
-            sb.append("  AI SEMANTIC ACCESS CONTROL EVALUATION\n");
+            sb.append("  AI AUTHORIZATION REVIEW\n");
             sb.append("=================================================================\n");
             sb.append(String.format("Verdict:    %s%n", v.getDisplayName()));
             sb.append(String.format("Model:      %s%n", aiResult.getModel()));
-            sb.append(String.format("Latency:    %d ms (%s)%n", aiResult.getExecutionTimeMs(), aiResult.isCached() ? "Cached" : "Live Evaluation"));
+            sb.append(String.format("Latency: %d ms • %s analysis%n", aiResult.getExecutionTimeMs(), aiResult.isCached() ? "Cached" : "Live"));
             sb.append(String.format("Timestamp:  %s%n%n", new Date(aiResult.getTimestamp())));
             sb.append("--- REASONING & ANALYSIS ---\n");
             sb.append(aiResult.getReasoning()).append("\n");
@@ -262,7 +262,7 @@ public class RequestResponseViewerPanel extends JPanel {
             aiModelTagLabel.setText("Model: -");
             aiCacheBadgeLabel.setText("");
             aiLatencyLabel.setText("");
-            aiReasoningArea.setText("No AI evaluation has been executed for this transaction.\nClick 'Re-analyze with AI' above to evaluate access control conformance.");
+            aiReasoningArea.setText("No AI analysis is available. Select a record and choose Analyze Again.");
         }
     }
 
@@ -271,7 +271,7 @@ public class RequestResponseViewerPanel extends JPanel {
         notesArea = new JTextArea();
         notesArea.setEditable(false);
         notesArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-        notesArea.setText("Select an entry in the table above to view audit analysis details and verdict explanations.");
+        notesArea.setText("Select a record to view its audit details and verdicts.");
 
         JScrollPane scrollPane = new JScrollPane(notesArea);
         notesTabPanel.add(scrollPane, BorderLayout.CENTER);
@@ -297,7 +297,7 @@ public class RequestResponseViewerPanel extends JPanel {
         tabbedPane.removeAll();
 
         // 1. Tab 0: Original Request & Response
-        tabbedPane.addTab("Original Request & Response", originalTabPanel);
+        tabbedPane.addTab("Original", originalTabPanel);
 
         // 2. Tab 1 .. N: Dedicated tab for EACH role
         if (roles != null) {
@@ -309,13 +309,13 @@ public class RequestResponseViewerPanel extends JPanel {
         }
 
         // 3. Unauthenticated Replay
-        tabbedPane.addTab("Unauthenticated Replay", unauthTabPanel);
+        tabbedPane.addTab("Unauthenticated", unauthTabPanel);
 
         // 4. AI Semantic Analysis
-        tabbedPane.addTab("AI Semantic Analysis", aiTabPanel);
+        tabbedPane.addTab("AI Review", aiTabPanel);
 
         // 5. Audit Details & Notes
-        tabbedPane.addTab("Audit Details & Notes", notesTabPanel);
+        tabbedPane.addTab("Details", notesTabPanel);
 
         // Restore selected tab if possible
         if (selectedTitle != null) {
@@ -366,13 +366,13 @@ public class RequestResponseViewerPanel extends JPanel {
             } catch (Exception ignored) {}
         }
         if (unauthStatusLabel != null) {
-            unauthStatusLabel.setText(" Unauthenticated authorization test result.");
+            unauthStatusLabel.setText("Unauthenticated test result");
             unauthStatusLabel.setForeground(Color.GRAY);
         }
 
         // 4. Reset Notes Area
         if (notesArea != null) {
-            notesArea.setText("Select an entry in the table above to view audit analysis details and verdict explanations.");
+            notesArea.setText("Select a record to view its audit details and verdicts.");
         }
 
         // 5. Reset AI Tab
@@ -391,7 +391,7 @@ public class RequestResponseViewerPanel extends JPanel {
             aiLatencyLabel.setText("");
         }
         if (aiReasoningArea != null) {
-            aiReasoningArea.setText("Select an audit entry in the table above to view AI semantic access control analysis.");
+            aiReasoningArea.setText("Select a record to view its AI analysis.");
         }
         if (reanalyzeBtn != null) {
             reanalyzeBtn.setEnabled(false);
@@ -466,7 +466,7 @@ public class RequestResponseViewerPanel extends JPanel {
                 } catch (Exception ignored) {}
             }
             Verdict v = unauth.getVerdict();
-            unauthStatusLabel.setText(String.format(" Unauthenticated Verdict: %s | Status: %d | Len: %d bytes | %s",
+            unauthStatusLabel.setText(String.format("Unauthenticated: %s | Status: %d | Length: %d bytes | %s",
                     v != null ? v.getDisplayName() : "-",
                     unauth.getStatusCode(),
                     unauth.getResponseLength(),
@@ -485,7 +485,7 @@ public class RequestResponseViewerPanel extends JPanel {
                     unauthResponseEditor.setResponse(HttpResponse.httpResponse(""));
                 } catch (Exception ignored) {}
             }
-            unauthStatusLabel.setText(" Unauthenticated Replay: Not tested / Disabled");
+            unauthStatusLabel.setText("Unauthenticated test: not run");
             unauthStatusLabel.setForeground(Color.GRAY);
         }
 
@@ -555,7 +555,7 @@ public class RequestResponseViewerPanel extends JPanel {
             this.roleName = roleName;
             this.containerPanel = new JPanel(new BorderLayout());
 
-            this.statusLabel = new JLabel(" Select an audit record to view replayed traffic for " + roleName);
+            this.statusLabel = new JLabel("Select a record to view " + roleName + " traffic");
             this.statusLabel.setFont(statusLabel.getFont().deriveFont(Font.BOLD, 12f));
             this.statusLabel.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
 
@@ -574,7 +574,7 @@ public class RequestResponseViewerPanel extends JPanel {
                 this.requestEditor = null;
                 this.responseEditor = null;
                 containerPanel.add(statusLabel, BorderLayout.NORTH);
-                containerPanel.add(new JLabel(" Role Editors available inside Burp Suite runtime."), BorderLayout.CENTER);
+                containerPanel.add(new JLabel("Request and response details are unavailable in this view."), BorderLayout.CENTER);
             }
         }
 
@@ -594,7 +594,7 @@ public class RequestResponseViewerPanel extends JPanel {
                 } catch (Exception ignored) {}
             }
             if (statusLabel != null) {
-                statusLabel.setText(" Select an audit record to view replayed traffic for " + roleName);
+                statusLabel.setText("Select a record to view " + roleName + " traffic");
                 statusLabel.setForeground(Color.GRAY);
             }
         }
@@ -646,7 +646,7 @@ public class RequestResponseViewerPanel extends JPanel {
                         responseEditor.setResponse(HttpResponse.httpResponse(""));
                     } catch (Exception ignored) {}
                 }
-                statusLabel.setText(" Role: " + roleName + " | Status: Not tested / Disabled");
+                statusLabel.setText("Role: " + roleName + " | Not tested");
                 statusLabel.setForeground(Color.GRAY);
             }
         }

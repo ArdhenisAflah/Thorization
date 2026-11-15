@@ -142,3 +142,7 @@ app/build/libs/Thorization.jar
 - Single-record AI analysis remains available and unchanged.
 - The selected-row AI action sends one collective analysis request over the explicit ordered selection. `AiAuditContextBuilder` produces provider-independent schema version 1.0 evidence, bounded request/response excerpts, redacted common secrets, deterministic role verdicts, and conservative inferred relationships.
 - Batch analysis is read-only, does not expand traffic scope, and stores results in the AI result field without changing deterministic verdicts. REST record analysis remains record-scoped; no MCP transport is implemented in this repository.
+
+# UI copy
+
+- Main navigation, audit actions, role settings, AI settings, record viewers, and pipeline status use concise labels and natural user-facing language.

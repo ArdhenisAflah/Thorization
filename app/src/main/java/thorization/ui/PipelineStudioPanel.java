@@ -63,8 +63,7 @@ public class PipelineStudioPanel extends JPanel implements EngineListener {
                 BorderFactory.createEmptyBorder(6, 12, 6, 12)
         ));
 
-        String bannerMsg = "[WIP / Future Development] Pipeline Studio automated execution is currently paused. " +
-                "Development is focused on Core Interception, Safe Drop Replays, and AI MCP integration.";
+        String bannerMsg = "Pipeline execution is paused while this feature is under development.";
         JLabel bannerText = new JLabel(bannerMsg);
         bannerText.setFont(bannerText.getFont().deriveFont(Font.PLAIN, 12f));
         Color bannerFg = UiUtils.isDarkMode() ? new Color(240, 200, 120) : new Color(133, 77, 0);
@@ -104,8 +103,8 @@ public class PipelineStudioPanel extends JPanel implements EngineListener {
         savePipelineBtn.setToolTipText("Save current scenario changes");
         JButton deletePipelineBtn = new JButton("Delete");
         deletePipelineBtn.setToolTipText("Delete selected scenario");
-        JButton runPipelineBtn = new JButton("▶ Run (Paused - WIP)");
-        runPipelineBtn.setToolTipText("Pipeline Studio execution is currently paused for future development.");
+        JButton runPipelineBtn = new JButton("▶ Run");
+        runPipelineBtn.setToolTipText("Pipeline execution is currently unavailable.");
         runPipelineBtn.setEnabled(false);
         runPipelineBtn.setBackground(new Color(108, 117, 125));
         runPipelineBtn.setForeground(new Color(220, 220, 220));
@@ -444,4 +443,3 @@ public class PipelineStudioPanel extends JPanel implements EngineListener {
     @Override public void onEngineStateChanged(boolean enabled) {}
     @Override public void onFilterConfigChanged(FilterConfig config) {}
 }
-

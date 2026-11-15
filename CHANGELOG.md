@@ -4,6 +4,12 @@ All notable changes, patches, UI improvements, and bug fixes for the **Thorizati
 
 ---
 
+## [v1.4.0] - 2026-11-15
+### Added
+- Collective AI audit for explicitly selected rows, with structured, bounded endpoint evidence and cross-endpoint relationships.
+### Changed
+- Refined visible labels, menu actions, tooltips, empty states, and pipeline status messages for clearer, more natural wording.
+
 ## [v1.3.2] - 2026-10-20 (Current)
 ### 🐛 Fixed & Refined (Session Export / Import & Viewer Data Integrity)
 - **Resolved Blank Request & Response Viewers on Import**:

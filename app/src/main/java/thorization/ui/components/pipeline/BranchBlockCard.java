@@ -55,7 +55,7 @@ public class BranchBlockCard extends JPanel {
         nameField = new JTextField(branch.getName(), 18);
         nameField.setFont(nameField.getFont().deriveFont(Font.BOLD, 12f));
         nameField.setPreferredSize(new Dimension(200, 26));
-        nameField.setToolTipText("Condition branch label (string)");
+        nameField.setToolTipText("Name this condition");
 
         JPanel titleLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         titleLeft.setOpaque(false);
@@ -143,7 +143,7 @@ public class BranchBlockCard extends JPanel {
         gbc.gridx = 1; gbc.gridwidth = 3; gbc.weightx = 1.0;
         failureNoteField = new JTextField(branch.getFailureNote());
         failureNoteField.setPreferredSize(new Dimension(300, 26));
-        failureNoteField.setToolTipText("Failure note logged when condition triggers stop (string)");
+        failureNoteField.setToolTipText("Message to show if this condition stops the scenario");
         fieldsPanel.add(failureNoteField, gbc);
 
         add(fieldsPanel, BorderLayout.CENTER);
@@ -157,13 +157,13 @@ public class BranchBlockCard extends JPanel {
                 expectedValueField.setToolTipText("Expected HTTP status code integer (e.g. 200, 403)");
                 break;
             case BODY_CONTAINS:
-                expectedValueField.setToolTipText("Substring to search within response body (string)");
+                expectedValueField.setToolTipText("Text to find in the response body");
                 break;
             case BODY_MATCHES_REGEX:
                 expectedValueField.setToolTipText("Regex pattern to match against response body (regex string)");
                 break;
             case VARIABLE_NOT_EMPTY:
-                expectedValueField.setToolTipText("Variable name to verify is non-empty (string)");
+                expectedValueField.setToolTipText("Variable to check for a value");
                 break;
         }
     }
@@ -183,4 +183,3 @@ public class BranchBlockCard extends JPanel {
         return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
     }
 }
-

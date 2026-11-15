@@ -52,7 +52,7 @@ public class RetestRolesDialog extends JDialog {
         JLabel titleLabel = new JLabel(description);
         titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 13f));
 
-        JLabel subtitleLabel = new JLabel("Select which user role(s) to re-test against target requests:");
+        JLabel subtitleLabel = new JLabel("Choose which roles to test against the selected requests.");
         subtitleLabel.setFont(subtitleLabel.getFont().deriveFont(Font.PLAIN, 12f));
         subtitleLabel.setForeground(Color.GRAY);
 
@@ -85,7 +85,7 @@ public class RetestRolesDialog extends JDialog {
 
         if (roles != null && !roles.isEmpty()) {
             for (UserRole role : roles) {
-                JCheckBox cb = new JCheckBox(role.getName() + (role.isEnabled() ? " (Active)" : " (Disabled)"));
+                JCheckBox cb = new JCheckBox(role.getName() + (role.isEnabled() ? " · enabled" : " · disabled"));
                 cb.setSelected(role.isEnabled());
                 cb.setFont(cb.getFont().deriveFont(Font.PLAIN, 13f));
                 cb.setBorder(BorderFactory.createEmptyBorder(3, 4, 3, 4));
@@ -93,13 +93,13 @@ public class RetestRolesDialog extends JDialog {
                 listPanel.add(cb);
             }
         } else {
-            JLabel emptyLabel = new JLabel("No roles configured in Roles Manager.");
+            JLabel emptyLabel = new JLabel("No roles configured yet.");
             emptyLabel.setForeground(Color.GRAY);
             listPanel.add(emptyLabel);
         }
 
         // Unauthenticated Checkbox
-        unauthCheckBox = new JCheckBox("Unauthenticated Test (No Auth Headers)");
+        unauthCheckBox = new JCheckBox("Test without authentication");
         unauthCheckBox.setSelected(defaultUnauth);
         unauthCheckBox.setFont(unauthCheckBox.getFont().deriveFont(Font.BOLD, 12f));
         unauthCheckBox.setForeground(new Color(220, 53, 69));
@@ -108,12 +108,12 @@ public class RetestRolesDialog extends JDialog {
 
         JScrollPane scrollPane = new JScrollPane(listPanel);
         scrollPane.setPreferredSize(new Dimension(480, 200));
-        scrollPane.setBorder(BorderFactory.createTitledBorder("Available Roles to Re-Test"));
+        scrollPane.setBorder(BorderFactory.createTitledBorder("Roles to Test"));
         mainPanel.add(scrollPane, BorderLayout.CENTER);
 
         // 4. Bottom Action Buttons Panel (Clean alignment, no overlapping)
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 8));
-        JButton runBtn = new JButton("Run Re-Test");
+        JButton runBtn = new JButton("Run Retest");
         runBtn.setFont(runBtn.getFont().deriveFont(Font.BOLD, 12f));
         runBtn.setPreferredSize(new Dimension(120, 30));
         runBtn.addActionListener(e -> {

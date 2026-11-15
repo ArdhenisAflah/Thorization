@@ -132,20 +132,20 @@ public class RolesPanel extends JPanel implements EngineListener {
         // Action and Ordering Buttons
         JPanel buttonBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 4));
         JButton addBtn = new JButton("Add Role");
-        JButton removeBtn = new JButton("Remove");
-        JButton duplicateBtn = new JButton("Duplicate");
-        JButton moveUpBtn = new JButton("▲ Up");
-        JButton moveDownBtn = new JButton("▼ Down");
+        JButton removeBtn = new JButton("Remove Role");
+        JButton duplicateBtn = new JButton("Duplicate Role");
+        JButton moveUpBtn = new JButton("▲ Move Up");
+        JButton moveDownBtn = new JButton("▼ Move Down");
 
-        addBtn.setToolTipText("Add a new empty role entry");
+        addBtn.setToolTipText("Create a role");
         removeBtn.setToolTipText("Remove the selected role");
-        duplicateBtn.setToolTipText("Duplicate the selected role with sequential index naming");
+        duplicateBtn.setToolTipText("Copy the selected role");
 
         addBtn.addActionListener(e -> onAddNewRole());
         removeBtn.addActionListener(e -> onRemoveRole());
         duplicateBtn.addActionListener(e -> onDuplicateRole());
 
-        moveUpBtn.setToolTipText("Move selected role higher in execution sequence");
+        moveUpBtn.setToolTipText("Move the selected role earlier in the replay order");
         moveUpBtn.addActionListener(e -> {
             int row = rolesTable.getSelectedRow();
             if (row > 0) {
@@ -155,7 +155,7 @@ public class RolesPanel extends JPanel implements EngineListener {
             }
         });
 
-        moveDownBtn.setToolTipText("Move selected role lower in execution sequence");
+        moveDownBtn.setToolTipText("Move the selected role later in the replay order");
         moveDownBtn.addActionListener(e -> {
             int row = rolesTable.getSelectedRow();
             if (row >= 0 && row < controller.getRoles().size() - 1) {
@@ -184,7 +184,7 @@ public class RolesPanel extends JPanel implements EngineListener {
         // 1. Role Details Form
         JPanel formPanel = new JPanel(new GridBagLayout());
         formPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createTitledBorder("Role Details & Injected Credentials"),
+                BorderFactory.createTitledBorder("Role Credentials"),
                 BorderFactory.createEmptyBorder(10, 10, 10, 10)
         ));
 
@@ -195,29 +195,29 @@ public class RolesPanel extends JPanel implements EngineListener {
 
         // Role Name
         gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0;
-        formPanel.add(new JLabel("Role Name:"), gbc);
+        formPanel.add(new JLabel("Role:"), gbc);
         gbc.gridx = 1; gbc.weightx = 1.0;
         roleNameField = new JTextField(20);
         roleNameField.setPreferredSize(new Dimension(220, 28));
-        roleNameField.setToolTipText("Role identifier name (string)");
+        roleNameField.setToolTipText("Name this role");
         formPanel.add(roleNameField, gbc);
 
         // Role Enabled
         gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0;
-        formPanel.add(new JLabel("Active for Audit:"), gbc);
+        formPanel.add(new JLabel("Status:"), gbc);
         gbc.gridx = 1; gbc.weightx = 1.0;
-        roleEnabledCheckBox = new JCheckBox("Enable this role during replay");
+        roleEnabledCheckBox = new JCheckBox("Use this role during replay");
         roleEnabledCheckBox.setSelected(true);
-        roleEnabledCheckBox.setToolTipText("Enable or disable this role during replay (boolean)");
+        roleEnabledCheckBox.setToolTipText("Include or skip this role during replay");
         formPanel.add(roleEnabledCheckBox, gbc);
 
         // Custom Cookies
         gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0;
-        formPanel.add(new JLabel("Cookie Header:"), gbc);
+        formPanel.add(new JLabel("Cookies:"), gbc);
         gbc.gridx = 1; gbc.weightx = 1.0;
         cookiesField = new JTextField(20);
         cookiesField.setPreferredSize(new Dimension(220, 28));
-        cookiesField.setToolTipText("Cookie string to inject (format: key=value; key2=value2)");
+        cookiesField.setToolTipText("Enter cookies as name=value pairs separated by semicolons");
         formPanel.add(cookiesField, gbc);
 
         // Custom Headers Area
@@ -227,21 +227,21 @@ public class RolesPanel extends JPanel implements EngineListener {
         headersArea = new JTextArea(5, 20);
         headersArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
         headersArea.setText("");
-        headersArea.setToolTipText("Multiline HTTP headers to inject (format: Header-Name: value)");
+        headersArea.setToolTipText("Enter one header per line, such as X-Role: analyst");
         JScrollPane headersScroll = new JScrollPane(headersArea);
         headersScroll.setPreferredSize(new Dimension(220, 90));
         formPanel.add(headersScroll, gbc);
 
         // Save Role Button
         gbc.gridx = 1; gbc.gridy = 4; gbc.weighty = 0; gbc.fill = GridBagConstraints.NONE; gbc.anchor = GridBagConstraints.EAST;
-        JButton saveRoleBtn = new JButton("Save Role Changes");
+        JButton saveRoleBtn = new JButton("Save Role");
         saveRoleBtn.addActionListener(e -> onSaveCurrentRole());
         formPanel.add(saveRoleBtn, gbc);
 
         // 2. Settings Panel (Safe Interception + Filters)
         JPanel settingsPanel = new JPanel(new GridBagLayout());
         settingsPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createTitledBorder("Safe Request Interception & Drop Control"),
+                BorderFactory.createTitledBorder("Request Handling"),
                 BorderFactory.createEmptyBorder(10, 10, 10, 10)
         ));
 
@@ -268,11 +268,11 @@ public class RolesPanel extends JPanel implements EngineListener {
 
         // Drop Scope Radio Buttons
         fgbc.gridx = 0; fgbc.gridy = 1; fgbc.weightx = 0;
-        settingsPanel.add(new JLabel("Drop Scope:"), fgbc);
+        settingsPanel.add(new JLabel("Requests to Drop:"), fgbc);
         fgbc.gridx = 1; fgbc.weightx = 1.0;
         JPanel scopeRadioPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        dropStateChangingOnlyRadio = new JRadioButton("State-Changing Only (POST/PUT/DELETE/PATCH)", !initialConfig.isDropAllRequests());
-        dropAllRequestsRadio = new JRadioButton("Drop ALL Requests (Aggressive: including GET)", initialConfig.isDropAllRequests());
+        dropStateChangingOnlyRadio = new JRadioButton("State-changing methods only", !initialConfig.isDropAllRequests());
+        dropAllRequestsRadio = new JRadioButton("All requests, including GET", initialConfig.isDropAllRequests());
         ButtonGroup dropGroup = new ButtonGroup();
         dropGroup.add(dropStateChangingOnlyRadio);
         dropGroup.add(dropAllRequestsRadio);
@@ -294,7 +294,7 @@ public class RolesPanel extends JPanel implements EngineListener {
 
         // State-changing methods checkboxes
         fgbc.gridx = 0; fgbc.gridy = 2; fgbc.weightx = 0;
-        settingsPanel.add(new JLabel("State-Changing Methods:"), fgbc);
+        settingsPanel.add(new JLabel("State-changing methods:"), fgbc);
         fgbc.gridx = 1; fgbc.weightx = 1.0;
         JPanel methodsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         Set<String> activeMethods = initialConfig.getStateChangingMethods();
@@ -315,9 +315,9 @@ public class RolesPanel extends JPanel implements EngineListener {
         settingsPanel.add(methodsPanel, fgbc);
 
         // Scope & Static Files
-        onlyInScopeCheckBox = new JCheckBox("Intercept In-Scope Requests Only", initialConfig.isOnlyInScope());
-        ignoreStaticCheckBox = new JCheckBox("Ignore Static Files (.js, .css, .png, .jpg, .woff, etc.)", initialConfig.isIgnoreStaticFiles());
-        testUnauthCheckBox = new JCheckBox("Test Unauthenticated Replay (No Auth Headers)", initialConfig.isTestUnauthenticated());
+        onlyInScopeCheckBox = new JCheckBox("Limit interception to Burp scope", initialConfig.isOnlyInScope());
+        ignoreStaticCheckBox = new JCheckBox("Skip static files such as scripts, images, and fonts", initialConfig.isIgnoreStaticFiles());
+        testUnauthCheckBox = new JCheckBox("Test without authentication", initialConfig.isTestUnauthenticated());
 
         onlyInScopeCheckBox.addActionListener(e -> {
             if (!isUpdatingFromModel) {
@@ -343,23 +343,23 @@ public class RolesPanel extends JPanel implements EngineListener {
         settingsPanel.add(testUnauthCheckBox, fgbc);
 
         fgbc.gridy = 6;
-        settingsPanel.add(new JLabel("URL Include Regex (optional):"), fgbc);
+        settingsPanel.add(new JLabel("Include URL pattern:"), fgbc);
         fgbc.gridy = 7;
         urlIncludeRegexField = new JTextField(initialConfig.getUrlIncludeRegex(), 25);
         urlIncludeRegexField.setPreferredSize(new Dimension(220, 28));
-        urlIncludeRegexField.setToolTipText("Regex pattern matching target URLs to process (e.g. ^https://.*)");
+        urlIncludeRegexField.setToolTipText("Regular expression for URLs to include. Example: ^https://.*");
         settingsPanel.add(urlIncludeRegexField, fgbc);
 
         fgbc.gridy = 8;
-        settingsPanel.add(new JLabel("URL Exclude Regex (optional):"), fgbc);
+        settingsPanel.add(new JLabel("Exclude URL pattern:"), fgbc);
         fgbc.gridy = 9;
         urlExcludeRegexField = new JTextField(initialConfig.getUrlExcludeRegex(), 25);
         urlExcludeRegexField.setPreferredSize(new Dimension(220, 28));
-        urlExcludeRegexField.setToolTipText("Regex pattern matching URLs to skip (e.g. .*\\.(css|png|js)$)");
+        urlExcludeRegexField.setToolTipText("Regular expression for URLs to skip. Example: .*\\.(css|png|js)$");
         settingsPanel.add(urlExcludeRegexField, fgbc);
 
         fgbc.gridy = 10; fgbc.anchor = GridBagConstraints.EAST; fgbc.fill = GridBagConstraints.NONE;
-        JButton saveFilterBtn = new JButton("Apply Settings & Filters");
+        JButton saveFilterBtn = new JButton("Apply Settings");
         saveFilterBtn.addActionListener(e -> onApplyFilters());
         settingsPanel.add(saveFilterBtn, fgbc);
 

@@ -72,7 +72,7 @@ public class RequestBlockCard extends JPanel {
         nameField = new JTextField(step.getName(), 18);
         nameField.setFont(nameField.getFont().deriveFont(Font.BOLD, 12f));
         nameField.setPreferredSize(new Dimension(200, 26));
-        nameField.setToolTipText("Step identifier label (string)");
+        nameField.setToolTipText("Name this step");
 
         JPanel titleLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         titleLeft.setOpaque(false);
@@ -382,4 +382,3 @@ public class RequestBlockCard extends JPanel {
         return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
     }
 }
-

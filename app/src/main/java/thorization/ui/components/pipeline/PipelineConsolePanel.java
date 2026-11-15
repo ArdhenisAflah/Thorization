@@ -31,7 +31,7 @@ public class PipelineConsolePanel extends JPanel {
                 BorderFactory.createEmptyBorder(6, 6, 6, 6)
         ));
 
-        statusLabel = new JLabel("Status: Paused (WIP)");
+        statusLabel = new JLabel("Execution paused");
         statusLabel.setFont(statusLabel.getFont().deriveFont(Font.BOLD, 12f));
 
         verdictBadge = new JLabel(" VERDICT: N/A ");
@@ -49,10 +49,8 @@ public class PipelineConsolePanel extends JPanel {
         traceArea = new JTextArea();
         traceArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
         traceArea.setEditable(false);
-        traceArea.setText("[WIP / Future Development Notice]\n"
-                + "Pipeline Studio automated execution is currently paused.\n"
-                + "Development is focused on Core Interception, Safe Drop Replays, and AI MCP Bridge integration.\n"
-                + "Scenario design blocks are retained above for future reference.\n");
+        traceArea.setText("Pipeline execution is paused while this feature is under development.\n"
+                + "You can edit and save scenarios, but you cannot run them yet.\n");
 
         JScrollPane traceScroll = new JScrollPane(traceArea);
         traceScroll.setBorder(BorderFactory.createCompoundBorder(
