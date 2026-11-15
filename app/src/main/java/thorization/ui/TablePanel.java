@@ -465,9 +465,7 @@ public class TablePanel extends JPanel implements EngineListener {
 
         ensureAiColumnVisible();
 
-        for (AuditRecord record : selectedRecords) {
-            controller.evaluateRecordWithAi(record, null);
-        }
+        controller.evaluateRecordsBatchWithAi(selectedRecords, null);
     }
 
     private void onRemoveSelectedRecords() {

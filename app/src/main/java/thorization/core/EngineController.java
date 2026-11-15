@@ -638,6 +638,11 @@ public class EngineController {
         aiSemanticEngine.evaluateRecordAsync(record, new ArrayList<>(roles), onComplete);
     }
 
+    public void evaluateRecordsBatchWithAi(List<AuditRecord> records, Runnable onComplete) {
+        if (aiSemanticEngine == null) { if (onComplete != null) onComplete.run(); return; }
+        aiSemanticEngine.evaluateRecordsBatchAsync(records, new ArrayList<>(roles), onComplete);
+    }
+
     // --- Substitution Rules Management ---
 
     public List<ParameterSubstitutionRule> getSubstitutionRules() {

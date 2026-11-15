@@ -245,3 +245,8 @@ All notable changes, patches, UI improvements, and bug fixes for the **Thorizati
   - Tab 3: `StatisticsPanel` (Interactive JFreeChart Pie Chart & metric cards).
 - **Standalone Development Preview**:
   - Added `App.java` for standalone GUI preview.
+# 1.4.0 - Multi-record AI audit context
+
+### Added
+- Analyze explicitly selected audit rows together using a versioned, bounded, secret-redacted context with record IDs, selection order, role observations, deterministic verdicts, and inferred endpoint relationships.
+- Batch AI results remain separate from deterministic authorization verdicts.
