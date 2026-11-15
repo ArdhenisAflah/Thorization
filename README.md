@@ -1,5 +1,9 @@
 # Thorization
 
+<p align="center">
+  <img src="docs/images/thorization-logo.png" alt="Thorization logo" width="280">
+</p>
+
 Burp Suite extension for automated authorization, access control, and BOLA security testing built on the Montoya API.
 
 [![Burp Suite Montoya API](https://img.shields.io/badge/Burp_Suite-Montoya_API-orange.svg)](https://portswigger.net/burp)
